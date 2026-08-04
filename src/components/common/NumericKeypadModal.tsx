@@ -54,7 +54,7 @@ export default function NumericKeypadModal({
       }}
     >
       {/* ~1280-friendly fixed footprint — avoids layout shift */}
-      <div className="flex h-[min(520px,90dvh)] w-full max-w-[900px] overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
+      <div className="flex h-[min(520px,90dvh)] w-full max-w-[900px] overflow-hidden rounded-2xl border border-white/50 bg-white/90 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_32px_rgba(31,17,20,0.18)]">
         {/* LEFT */}
         <div className="flex w-[42%] flex-col border-r border-salon-border p-5">
           <header className="mb-4 flex items-start justify-between gap-2">

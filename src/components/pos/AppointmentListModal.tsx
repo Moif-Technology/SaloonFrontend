@@ -78,7 +78,7 @@ export default function AppointmentListModal({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex h-full max-h-[min(800px,92dvh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
+      <div className="flex h-full max-h-[min(800px,92dvh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/90 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_32px_rgba(31,17,20,0.18)]">
         {/* Header */}
         <header className="flex shrink-0 items-start justify-between gap-3 border-b border-salon-border px-5 py-4">
           <div className="min-w-0">

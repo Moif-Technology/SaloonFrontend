@@ -20,36 +20,38 @@ export default function ServicePanel({
   onBack,
 }: ServicePanelProps) {
   return (
-    <section className="flex flex-col h-full bg-gradient-to-br from-salon-accent/[0.09] via-white/45 to-white/45 backdrop-blur-2xl">
-      <header className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2.5 sm:py-4 border-b border-salon-accent/20 bg-salon-accent/[0.06]">
+    <section className="flex h-full flex-col bg-gradient-to-br from-salon-accent/[0.09] via-white/45 to-white/45 backdrop-blur-2xl">
+      <header className="flex items-center gap-2 border-b border-salon-accent/20 bg-salon-accent/[0.06] px-3 py-2.5 sm:gap-3 sm:px-5 sm:py-4">
         {activeGroup ? (
           <>
             <button
               onClick={onBack}
-              className="flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full text-salon-primary bg-white/40 backdrop-blur-sm border border-white/50 hover:bg-white/60 transition-colors shrink-0"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/50 bg-white/40 text-salon-primary backdrop-blur-sm transition-colors hover:bg-white/60 sm:h-11 sm:w-11"
               aria-label="Back to groups"
             >
               <ChevronLeft size={22} />
             </button>
-            <h2 className="text-base sm:text-xl lg:text-[24px] font-bold text-salon-text truncate">
+            <h2 className="truncate text-base font-bold text-salon-text sm:text-xl lg:text-[24px]">
               {activeGroup.name}
             </h2>
-            <span className="text-xs sm:text-base text-salon-muted font-medium whitespace-nowrap">
+            <span className="whitespace-nowrap text-xs font-medium text-salon-muted sm:text-base">
               {products.length} item{products.length === 1 ? '' : 's'}
             </span>
           </>
         ) : (
-          <h2 className="text-base sm:text-xl lg:text-[24px] font-bold text-salon-text">Select Group</h2>
+          <h2 className="text-base font-bold text-salon-text sm:text-xl lg:text-[24px]">
+            Select Group
+          </h2>
         )}
       </header>
 
       <div
         key={activeGroup?.id ?? 'groups'}
-        className="flex-1 overflow-y-auto p-3 sm:p-5 flex [align-items:safe_center] [justify-content:safe_center]"
+        className="flex flex-1 overflow-y-auto p-3 sm:p-5 [align-items:safe_center] [justify-content:safe_center]"
       >
         {activeGroup ? (
           products.length === 0 ? (
-            <div className="text-salon-muted text-sm sm:text-lg">No items in this group</div>
+            <div className="text-sm text-salon-muted sm:text-lg">No items in this group</div>
           ) : (
             <div className="flex flex-wrap justify-center gap-2.5 sm:gap-4">
               {products.map((product) => (

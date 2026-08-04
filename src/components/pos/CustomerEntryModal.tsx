@@ -226,7 +226,7 @@ export default function CustomerEntryModal({
       <div
         ref={panelRef}
       className={[
-  'flex w-full max-h-[min(720px,90dvh)] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl transition-transform duration-200',
+  'flex w-full max-h-[min(720px,90dvh)] flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/90 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_32px_rgba(31,17,20,0.18)] transition-transform duration-200',
   step === 2 ? 'max-w-[900px]' : 'max-w-[560px]',
 ].join(' ')}
  >
