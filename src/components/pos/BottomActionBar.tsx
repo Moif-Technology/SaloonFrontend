@@ -6,111 +6,75 @@ import {
   Percent,
   Printer,
   Pause,
-  MessageSquare,
-  Banknote,
-  CreditCard,
-  QrCode,
+  MoreHorizontal,
 } from 'lucide-react'
 import Button from '../common/Button'
 
 interface BottomActionBarProps {
-  onDiscount: () => void
-  onNote: () => void
-  onCustomer: () => void
-  onAppointment: () => void
-  onHoldBill: () => void
-  onBillPrint: () => void
-  onSaveBill: () => void
-  onQuickCash: () => void
-  onCard: () => void
-  onQrPay: () => void
   onSettlement: () => void
+  onSaveBill: () => void
+  onAppointment: () => void
+  onCustomer: () => void
+  onDiscount: () => void
+  onPrint: () => void
+  onHoldBill: () => void
+  onMore: () => void
   settlementDisabled?: boolean
 }
 
 export default function BottomActionBar({
-  onDiscount,
-  onNote,
-  onCustomer,
-  onAppointment,
-  onHoldBill,
-  onBillPrint,
-  onSaveBill,
-  onQuickCash,
-  onCard,
-  onQrPay,
   onSettlement,
+  onSaveBill,
+  onAppointment,
+  onCustomer,
+  onDiscount,
+  onPrint,
+  onHoldBill,
+  onMore,
   settlementDisabled,
 }: BottomActionBarProps) {
-  return (
-    <div className="flex flex-col gap-3 bg-white rounded-2xl border border-salon-border p-4">
-      <div className="grid grid-cols-6 gap-3">
-        <Button size="secondary" icon={<Percent size={22} />} onClick={onDiscount}>
-          Discount
-        </Button>
-        <Button size="secondary" icon={<MessageSquare size={22} />} onClick={onNote}>
-          Note
-        </Button>
-        <Button size="secondary" icon={<User size={22} />} onClick={onCustomer}>
-          Customer
-        </Button>
-        <Button size="secondary" icon={<CalendarClock size={22} />} onClick={onAppointment}>
-          Appt
-        </Button>
-        <Button size="secondary" icon={<Pause size={22} />} onClick={onHoldBill}>
-          Hold Bill
-        </Button>
-        <Button size="secondary" icon={<Printer size={22} />} onClick={onBillPrint}>
-          Bill Print
-        </Button>
-      </div>
+  const label = (text: string) => <span className="hidden lg:inline whitespace-nowrap">{text}</span>
 
-      <div className="grid grid-cols-12 gap-3">
+  return (
+    <div className="flex flex-col gap-2 sm:gap-3">
+      <div className="grid grid-cols-[1fr_1fr_1fr_2fr_2fr] items-center gap-1.5 sm:gap-3">
+        <Button size="secondary" icon={<CalendarClock size={20} />} onClick={onAppointment}>
+          {label('Appointment')}
+        </Button>
+        <Button size="secondary" icon={<User size={20} />} onClick={onCustomer}>
+          {label('Customer')}
+        </Button>
+        <Button size="secondary" icon={<Percent size={20} />} onClick={onDiscount}>
+          {label('Discount')}
+        </Button>
         <Button
-          variant="secondary"
+          variant="outline"
           size="primary"
-          icon={<Save size={24} />}
+          icon={<Save size={22} />}
           onClick={onSaveBill}
-          className="col-span-2"
         >
           Save Bill
-        </Button>
-        <Button
-          variant="secondary"
-          size="primary"
-          icon={<Banknote size={24} className="text-salon-success" />}
-          onClick={onQuickCash}
-          className="col-span-2"
-        >
-          Quick Cash
-        </Button>
-        <Button
-          variant="secondary"
-          size="primary"
-          icon={<CreditCard size={24} />}
-          onClick={onCard}
-          className="col-span-2"
-        >
-          Card
-        </Button>
-        <Button
-          variant="secondary"
-          size="primary"
-          icon={<QrCode size={24} className="text-salon-success" />}
-          onClick={onQrPay}
-          className="col-span-2"
-        >
-          QR Pay
         </Button>
         <Button
           variant="primary"
           size="primary"
           disabled={settlementDisabled}
           onClick={onSettlement}
-          className="col-span-4 justify-between"
+          icon={<ArrowRight size={22} />}
         >
-          <span className="flex items-center gap-3">Settlement</span>
-          <ArrowRight size={26} />
+          Settlement
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-[1fr_1fr_1fr_2fr_2fr] items-center gap-1.5 sm:gap-3">
+        <Button size="secondary" icon={<Printer size={20} />} onClick={onPrint}>
+          {label('Print')}
+        </Button>
+        <Button size="secondary" icon={<Pause size={20} />} onClick={onHoldBill}>
+          {label('Hold Bill')}
+        </Button>
+        <Button size="secondary" icon={<MoreHorizontal size={20} />} onClick={onMore}>
+          {label('More')}
         </Button>
       </div>
     </div>

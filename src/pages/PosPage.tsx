@@ -24,6 +24,8 @@ export default function PosPage() {
   const [billItems, setBillItems] = useState<BillItem[]>([])
   const [activeGroup, setActiveGroup] = useState<ServiceGroup | null>(null)
   const [discount] = useState(0)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const selectionMode = selectedIds.size > 0
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30_000)
@@ -44,13 +46,12 @@ export default function PosPage() {
     setBillItems((prev) => {
       const existing = prev.find((item) => item.productId === product.id)
       if (existing) {
-        return prev.map((item) =>
-          item.productId === product.id ? { ...item, qty: item.qty + 1 } : item,
-        )
+        const updated = { ...existing, qty: existing.qty + 1 }
+        return [updated, ...prev.filter((item) => item.productId !== product.id)]
       }
       return [
-        ...prev,
         { id: `bill-${product.id}-${Date.now()}`, productId: product.id, name: product.name, qty: 1, price: product.price },
+        ...prev,
       ]
     })
   }
@@ -69,16 +70,50 @@ export default function PosPage() {
 
   function handleRemove(id: string) {
     setBillItems((prev) => prev.filter((item) => item.id !== id))
+    setSelectedIds((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
   }
 
   function handleClear() {
     if (billItems.length === 0) return
     setBillItems([])
+    setSelectedIds(new Set())
     showSnackbar('Bill cleared', 'info')
   }
 
+  function handleEnterSelection(id: string) {
+    setSelectedIds(new Set([id]))
+  }
+
+  function handleToggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function handleCancelSelection() {
+    setSelectedIds(new Set())
+  }
+
+  function handleDeleteSelected() {
+    const count = selectedIds.size
+    setBillItems((prev) => prev.filter((item) => !selectedIds.has(item.id)))
+    setSelectedIds(new Set())
+    showSnackbar(`${count} item${count === 1 ? '' : 's'} removed`, 'info')
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-salon-bg">
+    <div className="flex flex-col h-dvh">
       <PosHeader
         time={formatTime(now)}
         customerLabel="Walk-in"
@@ -88,8 +123,8 @@ export default function PosPage() {
         onMore={() => showSnackbar('More options coming soon', 'info')}
       />
 
-      <main className="flex-1 min-h-0 flex gap-4 p-4">
-        <div className="w-[36%] min-w-[360px] h-full">
+      <main className="flex-1 min-h-0 flex flex-col md:flex-row gap-2 sm:gap-3 p-2 sm:p-3 pb-0">
+        <div className="h-[46%] md:h-full md:w-[36%] md:min-w-[300px] lg:min-w-[360px] shrink-0 min-h-0 rounded-2xl overflow-hidden border border-white/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_32px_rgba(31,17,20,0.10)]">
           <BillPanel
             items={billItems}
             totals={totals}
@@ -97,10 +132,16 @@ export default function PosPage() {
             onDecrement={handleDecrement}
             onRemove={handleRemove}
             onClear={handleClear}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onEnterSelection={handleEnterSelection}
+            onToggleSelect={handleToggleSelect}
+            onCancelSelection={handleCancelSelection}
+            onDeleteSelected={handleDeleteSelected}
           />
         </div>
 
-        <div className="flex-1 h-full">
+        <div className="flex-1 min-h-0 md:h-full rounded-2xl overflow-hidden border border-white/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_32px_rgba(31,17,20,0.10)]">
           <ServicePanel
             groups={serviceGroups}
             products={groupProducts}
@@ -112,21 +153,20 @@ export default function PosPage() {
         </div>
       </main>
 
-      <div className="px-4 pb-3">
-        <BottomActionBar
-          settlementDisabled={billItems.length === 0}
-          onDiscount={() => showSnackbar('Discount entry coming soon', 'info')}
-          onNote={() => showSnackbar('Note / comment coming soon', 'info')}
-          onCustomer={() => showSnackbar('Customer selection coming soon', 'info')}
-          onAppointment={() => showSnackbar('Appointment view coming soon', 'info')}
-          onHoldBill={() => showSnackbar('Bill held', 'warning')}
-          onBillPrint={() => showSnackbar('Printing bill...', 'info')}
-          onSaveBill={() => showSnackbar('Bill saved', 'success')}
-          onQuickCash={() => showSnackbar('Quick cash settlement...', 'success')}
-          onCard={() => showSnackbar('Card settlement...', 'success')}
-          onQrPay={() => showSnackbar('QR pay settlement...', 'success')}
-          onSettlement={() => showSnackbar('Proceeding to settlement...', 'success')}
-        />
+      <div className="px-2 sm:px-3 py-2 sm:py-3">
+        <div className="rounded-2xl px-3 sm:px-5 py-2.5 sm:py-4 bg-white/40 backdrop-blur-2xl border border-white/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_32px_rgba(31,17,20,0.10)]">
+          <BottomActionBar
+            settlementDisabled={billItems.length === 0}
+            onSettlement={() => showSnackbar('Proceeding to settlement...', 'success')}
+            onSaveBill={() => showSnackbar('Bill saved', 'success')}
+            onAppointment={() => showSnackbar('Appointment view coming soon', 'info')}
+            onCustomer={() => showSnackbar('Customer selection coming soon', 'info')}
+            onDiscount={() => showSnackbar('Discount entry coming soon', 'info')}
+            onPrint={() => showSnackbar('Printing bill...', 'info')}
+            onHoldBill={() => showSnackbar('Bill held', 'warning')}
+            onMore={() => showSnackbar('More actions coming soon', 'info')}
+          />
+        </div>
       </div>
 
       <StatusStrip staffInitial="A" staffName="Admin" billNo="000123" date={formatDate(now)} time={formatTime(now)} />

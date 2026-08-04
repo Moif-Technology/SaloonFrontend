@@ -20,32 +20,38 @@ export default function ServicePanel({
   onBack,
 }: ServicePanelProps) {
   return (
-    <section className="flex flex-col h-full bg-white rounded-2xl border border-salon-border overflow-hidden">
-      <header className="flex items-center gap-3 px-5 py-4 border-b border-salon-border">
+    <section className="flex flex-col h-full bg-white/45 backdrop-blur-2xl">
+      <header className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2.5 sm:py-4 border-b border-white/40 bg-white/20">
         {activeGroup ? (
           <>
             <button
               onClick={onBack}
-              className="flex items-center justify-center w-11 h-11 rounded-full text-salon-primary hover:bg-salon-primary-light"
+              className="flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full text-salon-primary bg-white/40 backdrop-blur-sm border border-white/50 hover:bg-white/60 transition-colors shrink-0"
               aria-label="Back to groups"
             >
-              <ChevronLeft size={28} />
+              <ChevronLeft size={22} />
             </button>
-            <h2 className="text-[24px] font-bold text-salon-text">{activeGroup.name}</h2>
+            <h2 className="text-base sm:text-xl lg:text-[24px] font-bold text-salon-text truncate">
+              {activeGroup.name}
+            </h2>
+            <span className="text-xs sm:text-base text-salon-muted font-medium whitespace-nowrap">
+              {products.length} item{products.length === 1 ? '' : 's'}
+            </span>
           </>
         ) : (
-          <h2 className="text-[24px] font-bold text-salon-text">Select Group</h2>
+          <h2 className="text-base sm:text-xl lg:text-[24px] font-bold text-salon-text">Select Group</h2>
         )}
       </header>
 
-      <div className="flex-1 overflow-y-auto p-5">
+      <div
+        key={activeGroup?.id ?? 'groups'}
+        className="flex-1 overflow-y-auto p-3 sm:p-5 flex [align-items:safe_center] [justify-content:safe_center]"
+      >
         {activeGroup ? (
           products.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-salon-muted text-lg">
-              No items in this group
-            </div>
+            <div className="text-salon-muted text-sm sm:text-lg">No items in this group</div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-4">
+            <div className="flex flex-wrap justify-center gap-2.5 sm:gap-4">
               {products.map((product) => (
                 <CatalogueTile
                   key={product.id}
@@ -58,7 +64,7 @@ export default function ServicePanel({
             </div>
           )
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-4">
+          <div className="flex flex-wrap justify-center gap-2.5 sm:gap-4">
             {groups.map((group) => (
               <CatalogueTile
                 key={group.id}
