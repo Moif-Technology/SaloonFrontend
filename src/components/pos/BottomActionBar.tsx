@@ -144,18 +144,23 @@ export default function BottomActionBar({
     item.onSelect()
   }
 
-  const secondaryBtnClass = 'flex-1 min-w-0'
+  /* 3-col on phones (2 rows), single fluid row from md up — keeps Discount touch-friendly */
+  const secondaryBtnClass =
+    'min-h-11 min-w-0 w-full px-1.5 sm:px-2 md:flex-1 ' +
+    'text-[11px] leading-tight xs:text-xs sm:text-sm md:text-base ' +
+    '[&>svg]:size-[18px] sm:[&>svg]:size-5 md:[&>svg]:size-[22px] ' +
+    'truncate'
 
   return (
-    <div className="flex flex-col gap-3 bg-white p-3 md:gap-4 md:p-4">
-      <div className="flex gap-2 md:gap-3">
+    <div className="flex flex-col gap-2 bg-white p-2 xs:p-3 md:gap-4 md:p-4">
+      <div className="grid grid-cols-3 gap-1.5 xs:gap-2 md:flex md:gap-3">
         <Button
           size="secondary"
           icon={<CalendarClock size={22} />}
           onClick={onAppointment}
           className={secondaryBtnClass}
         >
-          Appointment
+          <span className="truncate">Appointment</span>
         </Button>
         <Button
           size="secondary"
@@ -163,15 +168,16 @@ export default function BottomActionBar({
           onClick={onCustomer}
           className={secondaryBtnClass}
         >
-          Customer
+          <span className="truncate">Customer</span>
         </Button>
         <Button
           size="secondary"
           icon={<Percent size={22} />}
           onClick={onDiscount}
           className={secondaryBtnClass}
+          aria-label="Apply discount"
         >
-          Discount
+          <span className="truncate">Discount</span>
         </Button>
         <Button
           size="secondary"
@@ -179,7 +185,7 @@ export default function BottomActionBar({
           onClick={onBillPrint}
           className={secondaryBtnClass}
         >
-          Print
+          <span className="truncate">Print</span>
         </Button>
         <Button
           size="secondary"
@@ -187,23 +193,23 @@ export default function BottomActionBar({
           onClick={onHoldBill}
           className={secondaryBtnClass}
         >
-          Hold Bill
+          <span className="truncate">Hold Bill</span>
         </Button>
 
-        <div className={`relative ${secondaryBtnClass} ${moreOpen ? 'z-50' : ''}`}>
+        <div className={`relative min-w-0 w-full md:flex-1 ${moreOpen ? 'z-50' : ''}`}>
           <Button
             size="secondary"
             icon={<MoreHorizontal size={22} />}
             onClick={() => setMoreOpen((v) => !v)}
             className={[
-              'w-full',
+              secondaryBtnClass,
               moreOpen ? 'border-salon-primary/50 bg-salon-primary-light/40' : '',
             ].join(' ')}
             aria-expanded={moreOpen}
             aria-haspopup="menu"
             aria-controls={moreOpen ? menuId : undefined}
           >
-            More
+            <span className="truncate">More</span>
           </Button>
 
           {moreOpen && (
@@ -238,25 +244,25 @@ export default function BottomActionBar({
         </div>
       </div>
 
-      <div className="flex gap-2 md:gap-3">
+        <div className="flex gap-2 md:gap-3">
         <Button
           variant="secondary"
           size="primary"
           icon={<Save size={24} />}
           onClick={onSaveBill}
-          className="min-w-0 flex-[1]"
+          className="min-w-0 flex-[1] text-base sm:text-lg md:text-xl [&>svg]:size-5 sm:[&>svg]:size-6"
         >
-          Save Bill
+          <span className="truncate">Save Bill</span>
         </Button>
         <Button
           variant="primary"
           size="primary"
           disabled={settlementDisabled}
           onClick={onSettlement}
-          className="min-w-0 flex-[1.5] justify-between px-5"
+          className="min-w-0 flex-[1.5] justify-between px-3 sm:px-5 [&>svg]:size-5 sm:[&>svg]:size-6"
         >
-          <span className="flex items-center gap-3">Settlement</span>
-          <ArrowRight size={26} />
+          <span className="truncate">Settlement</span>
+          <ArrowRight size={26} className="shrink-0" />
         </Button>
       </div>
     </div>

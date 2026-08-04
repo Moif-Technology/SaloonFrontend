@@ -92,7 +92,7 @@ export default function BillPanel({
           </div>
 
           <div className="flex items-center justify-between text-sm text-salon-muted sm:text-base">
-            <span>Tax</span>
+            <span>VAT</span>
             <span className="font-semibold tabular-nums text-salon-text">
               {formatCurrency(totals.tax)}
             </span>

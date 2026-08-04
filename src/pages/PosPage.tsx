@@ -31,6 +31,7 @@ import type { Appointment } from '../types/appointment'
 import {
   type AppliedDiscount,
   computeDiscountAmount,
+  computeDiscountFinancialBreakdown,
 } from '../types/discount'
 import {
   fetchAppointments,
@@ -199,12 +200,15 @@ export default function PosPage() {
   const totals = useMemo(() => {
     const subtotal = billItems.reduce((sum, item) => sum + item.qty * item.price, 0)
     const discount = computeDiscountAmount(subtotal, appliedDiscount)
-    const tax = 0
+    const { vatAmount, finalTotal } = computeDiscountFinancialBreakdown(
+      subtotal,
+      appliedDiscount,
+    )
     return {
       subtotal,
       discount,
-      tax,
-      total: Math.max(subtotal - discount, 0),
+      tax: vatAmount,
+      total: finalTotal,
     }
   }, [billItems, appliedDiscount])
 

@@ -37,3 +37,44 @@ export function computeDiscountAmount(
   }
   return Math.min(Math.max(discount.value, 0), subtotal)
 }
+
+/** Store VAT rate (%) — replace with branch/tax-settings when API is wired */
+export const STORE_VAT_PERCENT = 5
+
+function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
+export interface DiscountFinancialBreakdown {
+  subtotal: number
+  discountAmount: number
+  taxableAmount: number
+  vatPercent: number
+  vatAmount: number
+  finalTotal: number
+}
+
+/**
+ * Live bill preview after discount: taxable base + VAT-inclusive final total.
+ * VAT applies to (subtotal − discount), never to the pre-discount subtotal alone.
+ */
+export function computeDiscountFinancialBreakdown(
+  subtotal: number,
+  discount: AppliedDiscount | null,
+  vatPercent: number = STORE_VAT_PERCENT,
+): DiscountFinancialBreakdown {
+  const safeSubtotal = Math.max(subtotal, 0)
+  const discountAmount = roundMoney(computeDiscountAmount(safeSubtotal, discount))
+  const taxableAmount = roundMoney(Math.max(safeSubtotal - discountAmount, 0))
+  const rate = Math.max(vatPercent, 0)
+  const vatAmount = roundMoney((taxableAmount * rate) / 100)
+  const finalTotal = roundMoney(taxableAmount + vatAmount)
+  return {
+    subtotal: roundMoney(safeSubtotal),
+    discountAmount,
+    taxableAmount,
+    vatPercent: rate,
+    vatAmount,
+    finalTotal,
+  }
+}

@@ -101,9 +101,9 @@ function KeyButton({
   className?: string
 }) {
   const base =
-    'flex items-center justify-center rounded-xl text-2xl font-bold ' +
-    'min-h-[56px] md:min-h-[64px] touch-manipulation ' +
-    'active:scale-[0.97] transition-transform duration-75 ' +
+    'flex items-center justify-center rounded-xl font-bold ' +
+    'min-h-[44px] h-full text-lg sm:min-h-[48px] sm:text-xl md:min-h-[56px] md:text-2xl ' +
+    'touch-manipulation active:scale-[0.97] transition-transform duration-75 ' +
     'disabled:opacity-40 disabled:pointer-events-none'
 
   const variants = {
