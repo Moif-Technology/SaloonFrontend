@@ -1,5 +1,6 @@
 import { ShoppingCart, Trash2 } from 'lucide-react'
 import BillItemRow from './BillItemRow'
+import IconButton from '../common/IconButton'
 import type { BillItem, BillTotals } from '../../types/pos'
 import { formatCurrency } from '../../utils/format'
 
@@ -23,8 +24,8 @@ export default function BillPanel({
   onEditQty,
 }: BillPanelProps) {
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-salon-border bg-white">
-      <header className="flex shrink-0 items-center justify-between border-b border-salon-border px-4 py-3">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/40 bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_32px_rgba(31,17,20,0.10)] backdrop-blur-2xl">
+      <header className="flex shrink-0 items-center justify-between border-b border-white/40 bg-white/20 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2 text-salon-text">
           <ShoppingCart size={22} className="shrink-0 text-salon-primary" />
           <h2 className="truncate text-lg font-bold tracking-tight sm:text-xl">
@@ -32,27 +33,30 @@ export default function BillPanel({
             <span className="ml-1.5 font-semibold text-salon-muted">({items.length})</span>
           </h2>
         </div>
-        <button
-          type="button"
+        <IconButton
+          variant="danger"
+          sizeClassName="w-8 h-8 sm:w-9 sm:h-9"
           onClick={onClear}
           disabled={items.length === 0}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-salon-danger transition-colors hover:bg-salon-danger/10 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Clear all items"
         >
           <Trash2 size={18} />
-          Clear
-        </button>
+        </IconButton>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {items.length === 0 ? (
           <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-2 px-4 text-salon-muted">
-            <ShoppingCart size={40} strokeWidth={1.5} className="opacity-50" />
+            <span className="flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-[radial-gradient(circle_at_35%_30%,var(--color-salon-primary-light),rgba(245,230,232,0)_70%)]">
+              <ShoppingCart size={28} strokeWidth={2} className="text-salon-primary/60 sm:hidden" />
+              <ShoppingCart size={38} strokeWidth={2} className="text-salon-primary/60 hidden sm:block" />
+            </span>
             <p className="text-base font-medium">No items added yet</p>
             <p className="text-sm text-salon-muted/80">Select services from the right</p>
           </div>
         ) : (
           <>
-            <div className="sticky top-0 z-10 hidden border-b border-salon-border bg-salon-bg/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-salon-muted backdrop-blur-sm sm:grid sm:grid-cols-[minmax(0,1fr)_72px_88px_96px_40px] sm:gap-3">
+            <div className="sticky top-0 z-10 hidden border-b border-white/40 bg-white/60 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-salon-muted backdrop-blur-sm sm:grid sm:grid-cols-[minmax(0,1fr)_72px_88px_96px_40px] sm:gap-3">
               <span>Item</span>
               <span className="text-center">Qty</span>
               <span className="text-right">Price</span>
@@ -75,7 +79,7 @@ export default function BillPanel({
         )}
       </div>
 
-      <footer className="shrink-0 border-t border-salon-border bg-salon-primary-light/50 px-4 py-3.5">
+      <footer className="shrink-0 border-t border-white/40 bg-white/25 px-4 py-3.5">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm text-salon-muted sm:text-base">
             <span>Subtotal</span>
@@ -98,7 +102,7 @@ export default function BillPanel({
             </span>
           </div>
 
-          <div className="flex items-center justify-between border-t border-salon-border pt-2.5">
+          <div className="flex items-center justify-between border-t border-white/40 pt-2.5">
             <span className="text-lg font-bold text-salon-primary sm:text-xl">Grand Total</span>
             <span className="text-xl font-bold tabular-nums text-salon-primary sm:text-2xl">
               {formatCurrency(totals.total)}

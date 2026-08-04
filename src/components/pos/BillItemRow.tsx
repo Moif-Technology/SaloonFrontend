@@ -21,26 +21,26 @@ export default function BillItemRow({
   const lineTotal = item.qty * item.price
 
   return (
-    <article className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 border-b border-salon-border py-3.5 sm:grid-cols-[minmax(0,1fr)_72px_88px_96px_40px] sm:items-center sm:gap-3 sm:py-3">
+    <article className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 border-b border-white/40 py-3.5 sm:grid-cols-[minmax(0,1fr)_72px_88px_96px_40px] sm:items-center sm:gap-3 sm:py-3">
       <div className="min-w-0 sm:col-auto">
         <p className="truncate text-base font-semibold leading-snug text-salon-text sm:text-lg">
           {item.name}
         </p>
       </div>
 
-      <div className="flex items-center justify-end gap-1.5 sm:justify-center">
+      <div className="flex items-center justify-end gap-1 sm:justify-center rounded-full border border-white/50 bg-white/30 backdrop-blur-sm px-1 py-1">
         <IconButton
           size={32}
           onClick={() => onDecrement(item.id)}
           aria-label={`Decrease ${item.name} quantity`}
-          className="bg-salon-primary-light text-salon-primary"
+          className="text-salon-primary"
         >
           <Minus size={16} />
         </IconButton>
         <button
           type="button"
           onClick={() => onEditQty?.(item.id)}
-          className="min-w-10 rounded-lg px-2 py-1 text-center text-base font-bold tabular-nums text-salon-text hover:bg-salon-primary-light"
+          className="min-w-10 rounded-lg px-2 py-1 text-center text-base font-bold tabular-nums text-salon-text hover:bg-white/50"
           aria-label={`Edit quantity ${item.qty}`}
         >
           {item.qty}
@@ -49,7 +49,7 @@ export default function BillItemRow({
           size={32}
           onClick={() => onIncrement(item.id)}
           aria-label={`Increase ${item.name} quantity`}
-          className="bg-salon-primary-light text-salon-primary"
+          className="text-salon-primary"
         >
           <Plus size={16} />
         </IconButton>

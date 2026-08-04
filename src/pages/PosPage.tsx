@@ -446,7 +446,7 @@ export default function PosPage() {
   }
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-salon-bg">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
       <header className="shrink-0">
         <PosHeader
           time={formatTime(now)}
@@ -459,8 +459,8 @@ export default function PosPage() {
         />
       </header>
 
-      <main className="flex min-h-0 flex-1 gap-2 p-2 md:gap-3 md:p-3">
-        <aside className="flex h-full min-h-0 w-full min-w-0 basis-[36%] flex-col overflow-hidden md:w-[36%] md:basis-[36%] md:shrink-0">
+      <main className="flex min-h-0 flex-1 flex-col gap-2 p-2 md:flex-row md:gap-3 md:p-3">
+        <aside className="h-[46%] min-h-0 w-full min-w-0 shrink-0 overflow-hidden md:h-full md:w-[36%] md:min-w-[300px] md:basis-[36%] md:shrink-0 lg:min-w-[360px] flex flex-col">
           <BillPanel
             items={billItems}
             totals={totals}
@@ -484,7 +484,7 @@ export default function PosPage() {
         </section>
       </main>
 
-      <footer className="shrink-0 border-t border-salon-border bg-white">
+      <footer className="shrink-0 border-t border-white/40 bg-white/40 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_-4px_24px_rgba(31,17,20,0.06)]">
         <BottomActionBar
           settlementDisabled={billItems.length === 0}
           onDiscount={handleOpenDiscount}

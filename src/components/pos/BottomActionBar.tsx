@@ -147,7 +147,7 @@ export default function BottomActionBar({
   const secondaryBtnClass = 'flex-1 min-w-0'
 
   return (
-    <div className="flex flex-col gap-3 bg-white p-3 md:gap-4 md:p-4">
+    <div className="flex flex-col gap-3 p-3 md:gap-4 md:p-4">
       <div className="flex gap-2 md:gap-3">
         <Button
           size="secondary"
@@ -155,7 +155,7 @@ export default function BottomActionBar({
           onClick={onAppointment}
           className={secondaryBtnClass}
         >
-          Appointment
+          <span className="hidden lg:inline">Appointment</span>
         </Button>
         <Button
           size="secondary"
@@ -163,7 +163,7 @@ export default function BottomActionBar({
           onClick={onCustomer}
           className={secondaryBtnClass}
         >
-          Customer
+          <span className="hidden lg:inline">Customer</span>
         </Button>
         <Button
           size="secondary"
@@ -171,7 +171,7 @@ export default function BottomActionBar({
           onClick={onDiscount}
           className={secondaryBtnClass}
         >
-          Discount
+          <span className="hidden lg:inline">Discount</span>
         </Button>
         <Button
           size="secondary"
@@ -179,7 +179,7 @@ export default function BottomActionBar({
           onClick={onBillPrint}
           className={secondaryBtnClass}
         >
-          Print
+          <span className="hidden lg:inline">Print</span>
         </Button>
         <Button
           size="secondary"
@@ -187,7 +187,7 @@ export default function BottomActionBar({
           onClick={onHoldBill}
           className={secondaryBtnClass}
         >
-          Hold Bill
+          <span className="hidden lg:inline">Hold Bill</span>
         </Button>
 
         <div className={`relative ${secondaryBtnClass} ${moreOpen ? 'z-50' : ''}`}>
@@ -203,7 +203,7 @@ export default function BottomActionBar({
             aria-haspopup="menu"
             aria-controls={moreOpen ? menuId : undefined}
           >
-            More
+            <span className="hidden lg:inline">More</span>
           </Button>
 
           {moreOpen && (
@@ -217,8 +217,8 @@ export default function BottomActionBar({
                   'absolute bottom-full right-0 z-50 mb-2',
                   'w-[min(100vw-1.5rem,17.5rem)] min-w-[13.5rem]',
                   'overflow-hidden rounded-xl',
-                  'border border-salon-border bg-white',
-                  'shadow-[0_8px_28px_rgba(31,17,20,0.14),0_2px_8px_rgba(31,17,20,0.06)]',
+                  'border border-white/50 bg-white/90 backdrop-blur-xl',
+                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_28px_rgba(31,17,20,0.14),0_2px_8px_rgba(31,17,20,0.06)]',
                 ].join(' ')}
                 style={{ animation: 'fadeIn 140ms ease-out' }}
               >
