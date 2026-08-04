@@ -1,4 +1,4 @@
-import { Minus, Plus, X } from 'lucide-react'
+import { Minus, Plus, X, Check } from 'lucide-react'
 import IconButton from '../common/IconButton'
 import type { BillItem } from '../../types/pos'
 import { formatCurrency } from '../../utils/format'
@@ -8,7 +8,10 @@ interface BillItemRowProps {
   onIncrement: (id: string) => void
   onDecrement: (id: string) => void
   onRemove: (id: string) => void
-  onEditQty?: (id: string) => void
+  selectionMode: boolean
+  selected: boolean
+  onEnterSelection: (id: string) => void
+  onToggleSelect: (id: string) => void
 }
 
 export default function BillItemRow({
@@ -16,68 +19,86 @@ export default function BillItemRow({
   onIncrement,
   onDecrement,
   onRemove,
-  onEditQty,
+  selectionMode,
+  selected,
+  onEnterSelection,
+  onToggleSelect,
 }: BillItemRowProps) {
-  const lineTotal = item.qty * item.price
+  const amount = item.qty * item.price
 
   return (
-    <article className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 border-b border-white/40 py-3.5 sm:grid-cols-[minmax(0,1fr)_72px_88px_96px_40px] sm:items-center sm:gap-3 sm:py-3">
-      <div className="min-w-0 sm:col-auto">
-        <p className="truncate text-base font-semibold leading-snug text-salon-text sm:text-lg">
+    <div
+      onDoubleClick={() => !selectionMode && onEnterSelection(item.id)}
+      onClick={() => selectionMode && onToggleSelect(item.id)}
+      className={[
+        'flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3.5 px-2 -mx-2 border-b border-white/40 last:border-b-0 rounded-lg transition-colors select-none',
+        selectionMode ? 'cursor-pointer' : '',
+        selected ? 'bg-white/40' : '',
+      ].join(' ')}
+    >
+      {selectionMode && (
+        <span
+          className={[
+            'flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 shrink-0 transition-colors',
+            selected
+              ? 'bg-salon-primary border-salon-primary text-white'
+              : 'border-salon-border text-transparent',
+          ].join(' ')}
+        >
+          <Check size={15} strokeWidth={3} />
+        </span>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm sm:text-lg lg:text-[24px] leading-tight font-semibold text-salon-text line-clamp-2">
           {item.name}
         </p>
+        {selectionMode ? (
+          <span className="text-xs sm:text-base lg:text-[18px] text-salon-muted whitespace-nowrap">
+            Qty {item.qty} x {formatCurrency(item.price)}
+          </span>
+        ) : (
+          <div className="flex items-center gap-1.5 sm:gap-2.5 mt-1 sm:mt-2">
+            <div className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-white/50 bg-white/30 backdrop-blur-sm pl-1 pr-1 sm:pl-1.5 sm:pr-1.5 py-1">
+              <IconButton
+                sizeClassName="w-6 h-6 sm:w-7 sm:h-7 lg:w-9 lg:h-9"
+                onClick={() => onDecrement(item.id)}
+                aria-label={`Decrease ${item.name} quantity`}
+                className="text-salon-text"
+              >
+                <Minus size={14} />
+              </IconButton>
+              <span className="text-sm sm:text-lg font-semibold w-5 sm:w-6 text-center tabular-nums">{item.qty}</span>
+              <IconButton
+                sizeClassName="w-6 h-6 sm:w-7 sm:h-7 lg:w-9 lg:h-9"
+                onClick={() => onIncrement(item.id)}
+                aria-label={`Increase ${item.name} quantity`}
+                className="text-salon-text"
+              >
+                <Plus size={14} />
+              </IconButton>
+            </div>
+            <span className="text-xs sm:text-base lg:text-[18px] text-salon-muted whitespace-nowrap">
+              x {formatCurrency(item.price)}
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center justify-end gap-1 sm:justify-center rounded-full border border-white/50 bg-white/30 backdrop-blur-sm px-1 py-1">
-        <IconButton
-          size={32}
-          onClick={() => onDecrement(item.id)}
-          aria-label={`Decrease ${item.name} quantity`}
-          className="text-salon-primary"
-        >
-          <Minus size={16} />
-        </IconButton>
-        <button
-          type="button"
-          onClick={() => onEditQty?.(item.id)}
-          className="min-w-10 rounded-lg px-2 py-1 text-center text-base font-bold tabular-nums text-salon-text hover:bg-white/50"
-          aria-label={`Edit quantity ${item.qty}`}
-        >
-          {item.qty}
-        </button>
-        <IconButton
-          size={32}
-          onClick={() => onIncrement(item.id)}
-          aria-label={`Increase ${item.name} quantity`}
-          className="text-salon-primary"
-        >
-          <Plus size={16} />
-        </IconButton>
-      </div>
+      <p className="text-sm sm:text-lg lg:text-[24px] font-bold text-salon-text w-16 sm:w-24 lg:w-28 text-right tabular-nums shrink-0">
+        {formatCurrency(amount)}
+      </p>
 
-      <div className="text-sm text-salon-muted sm:text-right sm:text-base">
-        <span className="sm:hidden">@ </span>
-        <span className="font-medium tabular-nums text-salon-text">
-          {formatCurrency(item.price)}
-        </span>
-      </div>
-
-      <div className="text-right">
-        <p className="text-base font-bold tabular-nums text-salon-text sm:text-lg">
-          {formatCurrency(lineTotal)}
-        </p>
-      </div>
-
-      <div className="flex justify-end sm:justify-center">
+      {!selectionMode && (
         <IconButton
           variant="danger"
-          size={36}
+          sizeClassName="w-8 h-8 sm:w-9 sm:h-9 lg:w-11 lg:h-11"
           onClick={() => onRemove(item.id)}
           aria-label={`Remove ${item.name}`}
         >
-          <X size={20} />
+          <X size={17} />
         </IconButton>
-      </div>
-    </article>
+      )}
+    </div>
   )
 }

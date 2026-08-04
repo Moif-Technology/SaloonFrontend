@@ -28,15 +28,14 @@ export interface BillItem {
 export interface BillTotals {
   subtotal: number
   discount: number
-  tax: number
   total: number
 }
 
-/** Snapshot of a cart parked from the POS billing screen */
+/** Snapshot of a cart parked from the POS billing screen. Not currently wired into the UI. */
 export interface HeldBill {
   id: string
   billNo: string
-  heldAt: string // ISO timestamp
+  heldAt: string
   note: string
   customerName: string
   stylistName: string
