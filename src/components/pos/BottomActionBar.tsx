@@ -144,120 +144,90 @@ export default function BottomActionBar({
     item.onSelect()
   }
 
-  const secondaryBtnClass = 'flex-1 min-w-0'
+  const label = (text: string) => (
+    <span className="hidden lg:inline whitespace-nowrap">{text}</span>
+  )
 
   return (
-    <div className="flex flex-col gap-3 p-3 md:gap-4 md:p-4">
-      <div className="flex gap-2 md:gap-3">
+    <div className="grid grid-cols-[1fr_1fr_1fr_2fr_2fr] grid-rows-2 gap-1.5 p-3 sm:gap-3 md:p-4">
+      <Button size="secondary" icon={<CalendarClock size={20} />} onClick={onAppointment}>
+        {label('Appointment')}
+      </Button>
+      <Button size="secondary" icon={<User size={20} />} onClick={onCustomer}>
+        {label('Customer')}
+      </Button>
+      <Button size="secondary" icon={<Percent size={20} />} onClick={onDiscount}>
+        {label('Discount')}
+      </Button>
+      <Button
+        variant="outline"
+        size="stretch"
+        className="row-span-2"
+        icon={<Save size={22} />}
+        onClick={onSaveBill}
+      >
+        Save Bill
+      </Button>
+      <Button
+        variant="primary"
+        size="stretch"
+        className="row-span-2 justify-between px-5"
+        disabled={settlementDisabled}
+        onClick={onSettlement}
+      >
+        <span className="flex items-center gap-3">Settlement</span>
+        <ArrowRight size={26} />
+      </Button>
+
+      <Button size="secondary" icon={<Printer size={20} />} onClick={onBillPrint}>
+        {label('Print')}
+      </Button>
+      <Button size="secondary" icon={<Pause size={20} />} onClick={onHoldBill}>
+        {label('Hold Bill')}
+      </Button>
+
+      <div className={`relative ${moreOpen ? 'z-50' : ''}`}>
         <Button
           size="secondary"
-          icon={<CalendarClock size={22} />}
-          onClick={onAppointment}
-          className={secondaryBtnClass}
+          icon={<MoreHorizontal size={20} />}
+          onClick={() => setMoreOpen((v) => !v)}
+          className={[
+            'w-full',
+            moreOpen ? 'border-salon-primary/50 bg-salon-primary-light/40' : '',
+          ].join(' ')}
+          aria-expanded={moreOpen}
+          aria-haspopup="menu"
+          aria-controls={moreOpen ? menuId : undefined}
         >
-          <span className="hidden lg:inline">Appointment</span>
-        </Button>
-        <Button
-          size="secondary"
-          icon={<User size={22} />}
-          onClick={onCustomer}
-          className={secondaryBtnClass}
-        >
-          <span className="hidden lg:inline">Customer</span>
-        </Button>
-        <Button
-          size="secondary"
-          icon={<Percent size={22} />}
-          onClick={onDiscount}
-          className={secondaryBtnClass}
-        >
-          <span className="hidden lg:inline">Discount</span>
-        </Button>
-        <Button
-          size="secondary"
-          icon={<Printer size={22} />}
-          onClick={onBillPrint}
-          className={secondaryBtnClass}
-        >
-          <span className="hidden lg:inline">Print</span>
-        </Button>
-        <Button
-          size="secondary"
-          icon={<Pause size={22} />}
-          onClick={onHoldBill}
-          className={secondaryBtnClass}
-        >
-          <span className="hidden lg:inline">Hold Bill</span>
+          {label('More')}
         </Button>
 
-        <div className={`relative ${secondaryBtnClass} ${moreOpen ? 'z-50' : ''}`}>
-          <Button
-            size="secondary"
-            icon={<MoreHorizontal size={22} />}
-            onClick={() => setMoreOpen((v) => !v)}
-            className={[
-              'w-full',
-              moreOpen ? 'border-salon-primary/50 bg-salon-primary-light/40' : '',
-            ].join(' ')}
-            aria-expanded={moreOpen}
-            aria-haspopup="menu"
-            aria-controls={moreOpen ? menuId : undefined}
-          >
-            <span className="hidden lg:inline">More</span>
-          </Button>
-
-          {moreOpen && (
-            <>
-              <div className="fixed inset-0 z-40" aria-hidden onClick={closeMore} />
-              <div
-                id={menuId}
-                role="menu"
-                aria-label="More payment actions"
-                className={[
-                  'absolute bottom-full right-0 z-50 mb-2',
-                  'w-[min(100vw-1.5rem,17.5rem)] min-w-[13.5rem]',
-                  'overflow-hidden rounded-xl',
-                  'border border-white/50 bg-white/90 backdrop-blur-xl',
-                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_28px_rgba(31,17,20,0.14),0_2px_8px_rgba(31,17,20,0.06)]',
-                ].join(' ')}
-                style={{ animation: 'fadeIn 140ms ease-out' }}
-              >
-                <ul className="m-0 list-none divide-y divide-salon-border/80 p-0">
-                  {moreItems.map((item) => (
-                    <li key={item.id} role="none">
-                      <MoreMenuRow
-                        item={item}
-                        onActivate={() => handleMoreSelect(item)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="flex gap-2 md:gap-3">
-        <Button
-          variant="secondary"
-          size="primary"
-          icon={<Save size={24} />}
-          onClick={onSaveBill}
-          className="min-w-0 flex-[1]"
-        >
-          Save Bill
-        </Button>
-        <Button
-          variant="primary"
-          size="primary"
-          disabled={settlementDisabled}
-          onClick={onSettlement}
-          className="min-w-0 flex-[1.5] justify-between px-5"
-        >
-          <span className="flex items-center gap-3">Settlement</span>
-          <ArrowRight size={26} />
-        </Button>
+        {moreOpen && (
+          <>
+            <div className="fixed inset-0 z-40" aria-hidden onClick={closeMore} />
+            <div
+              id={menuId}
+              role="menu"
+              aria-label="More payment actions"
+              className={[
+                'absolute bottom-full right-0 z-50 mb-2',
+                'w-[min(100vw-1.5rem,17.5rem)] min-w-[13.5rem]',
+                'overflow-hidden rounded-xl',
+                'border border-white/50 bg-white/90 backdrop-blur-xl',
+                'shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_28px_rgba(31,17,20,0.14),0_2px_8px_rgba(31,17,20,0.06)]',
+              ].join(' ')}
+              style={{ animation: 'fadeIn 140ms ease-out' }}
+            >
+              <ul className="m-0 list-none divide-y divide-salon-border/80 p-0">
+                {moreItems.map((item) => (
+                  <li key={item.id} role="none">
+                    <MoreMenuRow item={item} onActivate={() => handleMoreSelect(item)} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
