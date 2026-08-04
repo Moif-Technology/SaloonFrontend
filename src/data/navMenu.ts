@@ -41,6 +41,8 @@ import {
   SlidersHorizontal,
   Lock,
   LogOut,
+  FolderPlus,
+  Network,
 } from 'lucide-react'
 
 export interface NavMenuItem {
@@ -49,6 +51,8 @@ export interface NavMenuItem {
   icon: LucideIcon
   /** Route path when the page exists; null = placeholder / not wired yet */
   path: string | null
+  /** Dialog action id (e.g. 'group-entry') when not navigating */
+  action?: 'group-entry' | 'product-entry' | 'sub-group-entry' | 'service-entry' | null
 }
 
 export interface NavMenuSection {
@@ -130,6 +134,43 @@ export const NAV_MENU_SECTIONS: NavMenuSection[] = [
       { id: 'inventory-reports', label: 'Inventory Reports', icon: Warehouse, path: null },
     ],
   },
+  {
+    id: 'masters',
+    title: 'Masters / Catalogue',
+    icon: Layers, // already imported
+    items: [
+      {
+        id: 'group-entry',
+        label: 'Group Entry',
+        icon: FolderPlus,
+        path: null,
+        action: 'group-entry',
+      },
+      {
+        id: 'sub-group-entry',
+        label: 'Sub Group Entry',
+        icon: Network, 
+        path: null,
+        action: 'sub-group-entry',
+      },
+      {
+        id: 'product-entry',
+        label: 'Product Entry',
+        icon: PackagePlus,
+        path: null,
+        action: 'product-entry',
+      },
+      {
+        id: 'service-entry',
+        label: 'Service Entry',
+        icon: Scissors,
+        path: null,
+        action: 'service-entry',
+      },
+    ],
+  },
+ 
+
   {
     id: 'settings',
     title: 'Settings',

@@ -1,3 +1,10 @@
+import NavDrawer from '../components/pos/NavDrawer'
+import GroupDetailsModal from '../components/pos/GroupDetailsModal'
+import ProductDetailsModal from '../components/pos/ProductDetailsModal'
+import SubGroupDetailsModal from '../components/pos/SubGroupDetailsModal'
+import ServiceDetailsModal from '../components/pos/ServiceDetailsModal'
+
+import type { NavMenuItem } from '../data/navMenu'
 import { useEffect, useMemo, useState } from 'react'
 import PosHeader from '../components/pos/PosHeader'
 import StatusStrip from '../components/pos/StatusStrip'
@@ -16,6 +23,7 @@ import NumericKeypadModal from '../components/common/NumericKeypadModal'
 import { applyNumericKey } from '../utils/numericInput'
 import AppointmentListModal from '../components/pos/AppointmentListModal'
 import DiscountModal from '../components/pos/DiscountModal'
+
 import PrintOptionsModal, {
   type ReceiptType,
 } from '../components/pos/PrintOptionsModal'
@@ -67,7 +75,11 @@ export default function PosPage() {
   const [billItems, setBillItems] = useState<BillItem[]>([])
   const [activeGroup, setActiveGroup] = useState<ServiceGroup | null>(null)
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null)
-
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false)
+  const [groupEntryOpen, setGroupEntryOpen] = useState(false)
+  const [subGroupEntryOpen, setSubGroupEntryOpen] = useState(false)
+  const [productEntryOpen, setProductEntryOpen] = useState(false)
+  const [serviceEntryOpen, setServiceEntryOpen] = useState(false)
   const [discountModalOpen, setDiscountModalOpen] = useState(false)
   const [customerModalOpen, setCustomerModalOpen] = useState(false)
   const [printModalOpen, setPrintModalOpen] = useState(false)
@@ -117,7 +129,35 @@ export default function PosPage() {
   function cancelQtyEdit() {
     setQtyEdit(null)
   }
-
+  function handleOpenMenu() {
+    setNavDrawerOpen(true)
+  }
+  
+  function handleNavSelect(item: NavMenuItem) {
+    setNavDrawerOpen(false)
+  
+    if (item.action === 'group-entry') {
+      setGroupEntryOpen(true)
+      return
+    }
+  
+    if (item.action === 'sub-group-entry') {
+      setSubGroupEntryOpen(true)
+      return
+    }
+  
+    if (item.action === 'product-entry') {
+      setProductEntryOpen(true)
+      return
+    }
+    if (item.action === 'service-entry') {
+      setServiceEntryOpen(true)
+      return
+    }
+  
+    showSnackbar(`${item.label} coming soon`, 'info')
+  }
+    
   function handleEditQty(id: string) {
     const item = billItems.find((i) => i.id === id)
     if (!item) return
@@ -452,7 +492,7 @@ export default function PosPage() {
           time={formatTime(now)}
           customerLabel={customerLabel}
           appointmentCount={todayApptCount}
-          onMenu={() => showSnackbar('Menu coming soon', 'info')}
+          onMenu={handleOpenMenu}
           onCustomer={handleOpenCustomer}
           onAppointment={handleOpenAppointments}
           onMore={() => showSnackbar('More options coming soon', 'info')}
@@ -573,6 +613,51 @@ export default function PosPage() {
         billRef={nextBillNo(billSeq)}
         onComplete={handleQrPaymentComplete}
       />
+      <NavDrawer
+  open={navDrawerOpen}
+  onClose={() => setNavDrawerOpen(false)}
+  onSelectItem={handleNavSelect}
+/>
+
+<GroupDetailsModal
+  open={groupEntryOpen}
+  onClose={() => setGroupEntryOpen(false)}
+  onSaved={() => {
+    setGroupEntryOpen(false)
+    showSnackbar('Group saved', 'success')
+    // Later: refresh groups list for ServicePanel
+  }}
+  onError={(msg: string) => showSnackbar(msg, 'error')}
+/>
+<SubGroupDetailsModal
+  open={subGroupEntryOpen}
+  onClose={() => setSubGroupEntryOpen(false)}
+  onSaved={() => {
+    setSubGroupEntryOpen(false)
+    showSnackbar('Sub group saved', 'success')
+  }}
+  onError={(msg: string) => showSnackbar(msg, 'error')}
+/>
+<ProductDetailsModal
+  open={productEntryOpen}
+  onClose={() => setProductEntryOpen(false)}
+  onSaved={() => {
+    setProductEntryOpen(false)
+    showSnackbar('Product saved', 'success')
+    // Later: refresh product catalogue for ServicePanel
+  }}
+  onError={(msg: string) => showSnackbar(msg, 'error')}
+/>
+<ServiceDetailsModal
+  open={serviceEntryOpen}
+  onClose={() => setServiceEntryOpen(false)}
+  onSaved={() => {
+    setServiceEntryOpen(false)
+    showSnackbar('Service saved', 'success')
+    // Later: refresh service catalogue for ServicePanel
+  }}
+  onError={(msg: string) => showSnackbar(msg, 'error')}
+/>
       <NumericKeypadModal
         open={!!qtyEdit}
         title="Edit quantity"
