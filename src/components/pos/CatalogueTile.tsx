@@ -15,14 +15,14 @@ export default function CatalogueTile({ label, icon: Icon, price, onClick }: Cat
     >
       <span className="flex items-center justify-center w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-[radial-gradient(circle_at_35%_30%,var(--color-salon-primary-light),rgba(245,230,232,0)_70%)]">
         <Icon
-          size={16}
-          className="text-salon-primary/70 sm:hidden"
-          strokeWidth={1.8}
+          size={18}
+          className="text-salon-primary sm:hidden"
+          strokeWidth={2.25}
         />
         <Icon
-          size={30}
-          className="text-salon-primary/70 hidden sm:block"
-          strokeWidth={1.8}
+          size={32}
+          className="text-salon-primary hidden sm:block"
+          strokeWidth={2.25}
         />
       </span>
       <span className="text-xs sm:text-lg lg:text-[22px] leading-tight font-semibold text-salon-text line-clamp-2">

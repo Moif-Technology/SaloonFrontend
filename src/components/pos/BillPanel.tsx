@@ -85,8 +85,8 @@ export default function BillPanel({
         {items.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-salon-muted gap-2 sm:gap-3">
             <span className="flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-[radial-gradient(circle_at_35%_30%,var(--color-salon-primary-light),rgba(245,230,232,0)_70%)] shadow-[inset_0_0_0_1px_rgba(121,7,40,0.08)]">
-              <ShoppingCart size={28} strokeWidth={1.5} className="text-salon-primary/50 sm:hidden" />
-              <ShoppingCart size={38} strokeWidth={1.5} className="text-salon-primary/50 hidden sm:block" />
+              <ShoppingCart size={28} strokeWidth={2} className="text-salon-primary/60 sm:hidden" />
+              <ShoppingCart size={38} strokeWidth={2} className="text-salon-primary/60 hidden sm:block" />
             </span>
             <p className="text-sm sm:text-lg font-medium">No items added yet</p>
             <p className="text-xs sm:text-base text-salon-muted/70 text-center">
