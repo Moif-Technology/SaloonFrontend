@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
-type ButtonSize = 'primary' | 'secondary' | 'compact'
+type ButtonSize = 'primary' | 'secondary' | 'compact' | 'stretch'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
@@ -25,6 +25,7 @@ const sizeClasses: Record<ButtonSize, string> = {
   primary: 'h-14 sm:h-16 lg:h-[72px] text-lg sm:text-xl lg:text-2xl font-bold px-3 sm:px-4 lg:px-6 rounded-xl gap-1.5 sm:gap-2 lg:gap-3',
   secondary: 'h-11 sm:h-12 lg:h-16 text-sm sm:text-base lg:text-xl font-semibold px-2 sm:px-3 lg:px-4 rounded-lg lg:rounded-xl gap-1 sm:gap-1.5 lg:gap-2',
   compact: 'h-11 text-base font-semibold px-3 rounded-lg gap-2',
+  stretch: 'h-full text-lg sm:text-xl lg:text-2xl font-bold px-3 sm:px-4 lg:px-6 rounded-xl gap-1.5 sm:gap-2 lg:gap-3',
 }
 
 export default function Button({
