@@ -1,11 +1,29 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-salon-primary: #790728;
+  --color-salon-primary-dark: #5c0520;
+  --color-salon-primary-light: #f5e6e8;
+  --color-salon-accent: #c9a227;
+  --color-salon-surface: #ffffff;
+  --color-salon-bg: #f4f2f3;
+  --color-salon-border: #e5dde0;
+  --color-salon-text: #1f1114;
+  --color-salon-muted: #7a6a6e;
+  --color-salon-success: #1f9254;
+  --color-salon-danger: #d5304f;
+}
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
@@ -14,4 +32,26 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--color-salon-bg);
+  color: var(--color-salon-text);
+  overflow: hidden;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d8cdd0;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
