@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { X, PackagePlus, Save, ScanBarcode, RotateCcw } from 'lucide-react'
+import { X, PackagePlus, Save, RotateCcw } from 'lucide-react'
 import Button from '../common/Button'
 import { createProduct, updateProduct } from '../../api/products'
 import { fetchGroups } from '../../api/groups'
@@ -241,59 +241,46 @@ export default function ProductDetailsModal({
 
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-            {/* Name * */}
-            <div>
-              <label
-                htmlFor="product-name"
-                className="text-sm font-semibold text-salon-text"
-              >
-                Product Name / Description{' '}
-                <span className="text-salon-danger">*</span>
-              </label>
-              <input
-                id="product-name"
-                type="text"
-                autoFocus
-                autoComplete="off"
-                value={form.name}
-                onChange={(e) => updateField('name', e.target.value)}
-                className={inputClass}
-                placeholder="e.g. Shampoo 250ml"
-              />
-              {fieldError && (
-                <p className="mt-1.5 text-sm font-medium text-salon-danger">
-                  {fieldError}
-                </p>
-              )}
-            </div>
+           {/* Code / Barcode — first */}
+<div>
+  <label htmlFor="product-code" className="text-sm font-semibold text-salon-text">
+    Product Code / Barcode{' '}
+    <span className="font-normal text-salon-muted">(optional)</span>
+  </label>
+  <div className="relative mt-1.5">
+    <input
+      id="product-code"
+      type="text"
+      autoFocus  
+      autoComplete="off"
+      value={form.code ?? ''}
+      onChange={(e) => updateField('code', e.target.value)}
+      className={`${inputClass} mt-0 pr-12`}
+      placeholder="Scan or type barcode"
+    />
+    {/* scanner icon span... */}
+  </div>
+</div>
 
-            {/* Code / Barcode + scanner icon */}
-            <div>
-              <label
-                htmlFor="product-code"
-                className="text-sm font-semibold text-salon-text"
-              >
-                Product Code / Barcode{' '}
-                <span className="font-normal text-salon-muted">(optional)</span>
-              </label>
-              <div className="relative mt-1.5">
-                <input
-                  id="product-code"
-                  type="text"
-                  autoComplete="off"
-                  value={form.code ?? ''}
-                  onChange={(e) => updateField('code', e.target.value)}
-                  className={`${inputClass} mt-0 pr-12`}
-                  placeholder="Scan or type barcode"
-                />
-                <span
-                  className="pointer-events-none absolute inset-y-0 right-0 flex w-12 items-center justify-center text-salon-primary"
-                  aria-hidden
-                >
-                  <ScanBarcode size={20} />
-                </span>
-              </div>
-            </div>
+{/* Name — second */}
+<div>
+  <label htmlFor="product-name" className="text-sm font-semibold text-salon-text">
+    Product Name / Description <span className="text-salon-danger">*</span>
+  </label>
+  <input
+    id="product-name"
+    type="text"
+    /* remove autoFocus here */
+    autoComplete="off"
+    value={form.name}
+    onChange={(e) => updateField('name', e.target.value)}
+    className={inputClass}
+    placeholder="e.g. Shampoo 250ml"
+  />
+  {fieldError && (
+    <p className="mt-1.5 text-sm font-medium text-salon-danger">{fieldError}</p>
+  )}
+</div>
 
             {/* Category / Group */}
             <div>

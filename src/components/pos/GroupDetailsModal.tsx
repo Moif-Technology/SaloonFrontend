@@ -12,6 +12,28 @@ export interface GroupDetailsModalProps {
   onSaved?: (group: unknown) => void
   onError?: (message: string) => void
 }
+/** Auto code from group name: "Hair Care" → "HC", "Spa" → "SPA" */
+function generateGroupCode(name: string): string {
+    const words = name
+      .trim()
+      .split(/\s+/)
+      .map((w) => w.replace(/[^a-zA-Z0-9]/g, ''))
+      .filter(Boolean)
+  
+    if (words.length === 0) return ''
+  
+    // Multiple words → initials (max 6)
+    if (words.length > 1) {
+      return words
+        .map((w) => w[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 6)
+    }
+  
+    // Single word → first 3 alphanumerics
+    return words[0].toUpperCase().slice(0, 3)
+  }
 
 const emptyForm: GroupFormValues = {
   name: '',
@@ -31,12 +53,14 @@ export default function GroupDetailsModal({
   onError,
 }: GroupDetailsModalProps) {
   const [form, setForm] = useState<GroupFormValues>(emptyForm)
-  const [fieldError, setFieldError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+const [fieldError, setFieldError] = useState<string | null>(null)
+const [saving, setSaving] = useState(false)
+/** When true, name changes no longer overwrite the code */
+const [codeTouched, setCodeTouched] = useState(false)
 
-  const isEdit = Boolean(initialGroup?.id)
+const isEdit = Boolean(initialGroup?.id)
 
-  useEffect(() => {
+useEffect(() => {
     if (!open) return
     if (initialGroup) {
       setForm({
@@ -45,8 +69,12 @@ export default function GroupDetailsModal({
         active: initialGroup.active ?? true,
         sortOrder: initialGroup.sortOrder,
       })
+      // Edit mode: treat code as user-owned so name edits don't overwrite it
+      setCodeTouched(true)
     } else {
       setForm(emptyForm)
+      // Create mode: allow auto-generation from name
+      setCodeTouched(false)
     }
     setFieldError(null)
     setSaving(false)
@@ -61,14 +89,34 @@ export default function GroupDetailsModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  if (!open) return null
-
   function updateField<K extends keyof GroupFormValues>(
     key: K,
     value: GroupFormValues[K],
   ) {
     setForm((prev) => ({ ...prev, [key]: value }))
     setFieldError(null)
+  }
+  
+  /** Name change → auto code only if user has not manually edited Code */
+  function handleNameChange(name: string) {
+    setForm((prev) => ({
+      ...prev,
+      name,
+      code: codeTouched ? prev.code : generateGroupCode(name),
+    }))
+    setFieldError(null)
+  }
+  
+  /** Any direct edit to Code locks auto-generation */
+  function handleCodeChange(code: string) {
+    setCodeTouched(true)
+    updateField('code', code)
+  }
+  
+  /** Optional: re-enable auto code from current name */
+  function handleRegenerateCode() {
+    setCodeTouched(false)
+    updateField('code', generateGroupCode(form.name))
   }
 
   async function handleSave() {
@@ -96,9 +144,10 @@ export default function GroupDetailsModal({
             : Number(form.sortOrder),
       }
 
-      const result = isEdit && initialGroup
-        ? await updateGroup(initialGroup.id, payload)
-        : await createGroup(payload)
+      const result =
+        isEdit && initialGroup
+          ? await updateGroup(initialGroup.id, payload)
+          : await createGroup(payload)
 
       onSaved?.(result)
       onClose()
@@ -115,6 +164,8 @@ export default function GroupDetailsModal({
     e.preventDefault()
     void handleSave()
   }
+
+  if (!open) return null
 
   return (
     <div
@@ -158,48 +209,62 @@ export default function GroupDetailsModal({
 
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-            <div>
-              <label
-                htmlFor="group-name"
-                className="text-sm font-semibold text-salon-text"
-              >
-                Group Name <span className="text-salon-danger">*</span>
-              </label>
-              <input
-                id="group-name"
-                type="text"
-                autoFocus
-                autoComplete="off"
-                value={form.name}
-                onChange={(e) => updateField('name', e.target.value)}
-                className={inputClass}
-                placeholder="e.g. Hair Care"
-              />
-              {fieldError && (
-                <p className="mt-1.5 text-sm font-medium text-salon-danger">
-                  {fieldError}
-                </p>
-              )}
-            </div>
+           {/* Code — above Group Name; auto-filled from name, still fully editable */}
+<div>
+  <div className="flex items-center justify-between gap-2">
+    <label
+      htmlFor="group-code"
+      className="text-sm font-semibold text-salon-text"
+    >
+      Code{' '}
+      <span className="font-normal text-salon-muted">
+        (optional · auto from name)
+      </span>
+    </label>
+    {!isEdit && form.name.trim() && (
+      <button
+        type="button"
+        onClick={handleRegenerateCode}
+        className="text-xs font-semibold text-salon-primary hover:underline"
+      >
+        Auto-fill
+      </button>
+    )}
+  </div>
+  <input
+    id="group-code"
+    type="text"
+    autoComplete="off"
+    value={form.code ?? ''}
+    onChange={(e) => handleCodeChange(e.target.value)}
+    className={inputClass}
+    placeholder="e.g. HC"
+  />
+</div>
 
-            <div>
-              <label
-                htmlFor="group-code"
-                className="text-sm font-semibold text-salon-text"
-              >
-                Code <span className="font-normal text-salon-muted">(optional)</span>
-              </label>
-              <input
-                id="group-code"
-                type="text"
-                autoComplete="off"
-                value={form.code ?? ''}
-                onChange={(e) => updateField('code', e.target.value)}
-                className={inputClass}
-                placeholder="e.g. HC"
-              />
-            </div>
-
+<div>
+  <label
+    htmlFor="group-name"
+    className="text-sm font-semibold text-salon-text"
+  >
+    Group Name <span className="text-salon-danger">*</span>
+  </label>
+  <input
+    id="group-name"
+    type="text"
+    autoFocus
+    autoComplete="off"
+    value={form.name}
+    onChange={(e) => handleNameChange(e.target.value)}
+    className={inputClass}
+    placeholder="e.g. Hair Care"
+  />
+  {fieldError && (
+    <p className="mt-1.5 text-sm font-medium text-salon-danger">
+      {fieldError}
+    </p>
+  )}
+</div>
             <div>
               <label
                 htmlFor="group-sort"
@@ -216,10 +281,7 @@ export default function GroupDetailsModal({
                 value={form.sortOrder ?? ''}
                 onChange={(e) => {
                   const v = e.target.value
-                  updateField(
-                    'sortOrder',
-                    v === '' ? undefined : Number(v),
-                  )
+                  updateField('sortOrder', v === '' ? undefined : Number(v))
                 }}
                 className={inputClass}
                 placeholder="0"
