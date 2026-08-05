@@ -31,3 +31,7 @@ yarn-error.log*
 *.swp
 *.swo
 *~
+
+# Local merge backup (do not commit)
+/_sonu_backup
+/_arshidha_backup

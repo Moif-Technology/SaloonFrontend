@@ -1,3 +1,4 @@
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import {
   ArrowRight,
   Save,
@@ -10,108 +11,238 @@ import {
   Banknote,
   CreditCard,
   QrCode,
+  MoreHorizontal,
+  ClipboardList,
 } from 'lucide-react'
 import Button from '../common/Button'
 
 interface BottomActionBarProps {
-  onDiscount: () => void
-  onNote: () => void
-  onCustomer: () => void
-  onAppointment: () => void
-  onHoldBill: () => void
-  onBillPrint: () => void
+  onSettlement: () => void
   onSaveBill: () => void
+  onAppointment: () => void
+  onCustomer: () => void
+  onDiscount: () => void
+  onBillPrint: () => void
+  /** Opens Job List (saved jobs) — occupies Hold Bill slot */
+  onJobList: () => void
+  onNote: () => void
   onQuickCash: () => void
   onCard: () => void
   onQrPay: () => void
-  onSettlement: () => void
+  /** Optional: park current bill locally */
+  onHoldBill?: () => void
   settlementDisabled?: boolean
 }
 
+interface MoreMenuItem {
+  id: string
+  label: string
+  icon: ReactNode
+  onSelect: () => void
+  accent?: 'default' | 'success'
+}
+
+function MoreMenuRow({
+  item,
+  onActivate,
+}: {
+  item: MoreMenuItem
+  onActivate: () => void
+}) {
+  const accentClass =
+    item.accent === 'success' ? 'text-salon-success' : 'text-salon-primary'
+
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      className={[
+        'flex w-full items-center gap-3.5 px-4 text-left',
+        'min-h-[56px] py-3.5',
+        'text-base font-semibold text-salon-text md:text-lg',
+        'transition-colors duration-100',
+        'hover:bg-salon-primary-light/60',
+        'active:bg-salon-primary-light',
+        'focus-visible:bg-salon-primary-light/60 focus-visible:outline-none',
+        'first:rounded-t-xl last:rounded-b-xl',
+      ].join(' ')}
+      onClick={onActivate}
+    >
+      <span
+        className={[
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+          'bg-salon-bg',
+          accentClass,
+        ].join(' ')}
+        aria-hidden
+      >
+        {item.icon}
+      </span>
+      <span className="min-w-0 flex-1">{item.label}</span>
+    </button>
+  )
+}
+
 export default function BottomActionBar({
-  onDiscount,
-  onNote,
-  onCustomer,
-  onAppointment,
-  onHoldBill,
-  onBillPrint,
+  onSettlement,
   onSaveBill,
+  onAppointment,
+  onCustomer,
+  onDiscount,
+  onBillPrint,
+  onJobList,
+  onNote,
   onQuickCash,
   onCard,
   onQrPay,
-  onSettlement,
+  onHoldBill,
   settlementDisabled,
 }: BottomActionBarProps) {
-  return (
-    <div className="flex flex-col gap-3 bg-white rounded-2xl border border-salon-border p-4">
-      <div className="grid grid-cols-6 gap-3">
-        <Button size="secondary" icon={<Percent size={22} />} onClick={onDiscount}>
-          Discount
-        </Button>
-        <Button size="secondary" icon={<MessageSquare size={22} />} onClick={onNote}>
-          Note
-        </Button>
-        <Button size="secondary" icon={<User size={22} />} onClick={onCustomer}>
-          Customer
-        </Button>
-        <Button size="secondary" icon={<CalendarClock size={22} />} onClick={onAppointment}>
-          Appt
-        </Button>
-        <Button size="secondary" icon={<Pause size={22} />} onClick={onHoldBill}>
-          Hold Bill
-        </Button>
-        <Button size="secondary" icon={<Printer size={22} />} onClick={onBillPrint}>
-          Bill Print
-        </Button>
-      </div>
+  const [moreOpen, setMoreOpen] = useState(false)
+  const menuId = useId()
 
-      <div className="grid grid-cols-12 gap-3">
+  const closeMore = () => setMoreOpen(false)
+
+  const moreItems: MoreMenuItem[] = [
+    {
+      id: 'note',
+      label: 'Note',
+      icon: <MessageSquare size={20} strokeWidth={2.25} />,
+      onSelect: onNote,
+    },
+    ...(onHoldBill
+      ? [
+          {
+            id: 'hold-bill',
+            label: 'Hold Bill',
+            icon: <Pause size={20} strokeWidth={2.25} />,
+            onSelect: onHoldBill,
+          } satisfies MoreMenuItem,
+        ]
+      : []),
+    {
+      id: 'quick-cash',
+      label: 'Quick Cash',
+      icon: <Banknote size={20} strokeWidth={2.25} />,
+      accent: 'success',
+      onSelect: onQuickCash,
+    },
+    {
+      id: 'card',
+      label: 'Card',
+      icon: <CreditCard size={20} strokeWidth={2.25} />,
+      onSelect: onCard,
+    },
+    {
+      id: 'qr-pay',
+      label: 'QR Pay',
+      icon: <QrCode size={20} strokeWidth={2.25} />,
+      accent: 'success',
+      onSelect: onQrPay,
+    },
+  ]
+
+  useEffect(() => {
+    if (!moreOpen) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setMoreOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [moreOpen])
+
+  function handleMoreSelect(item: MoreMenuItem) {
+    closeMore()
+    item.onSelect()
+  }
+
+  const label = (text: string) => (
+    <span className="hidden lg:inline whitespace-nowrap">{text}</span>
+  )
+
+  return (
+    <div className="grid grid-cols-[1fr_1fr_1fr_2fr_2fr] grid-rows-2 gap-1.5 p-3 sm:gap-3 md:p-4">
+      <Button size="secondary" icon={<CalendarClock size={20} />} onClick={onAppointment}>
+        {label('Appointment')}
+      </Button>
+      <Button size="secondary" icon={<User size={20} />} onClick={onCustomer}>
+        {label('Customer')}
+      </Button>
+      <Button size="secondary" icon={<Percent size={20} />} onClick={onDiscount}>
+        {label('Discount')}
+      </Button>
+      <Button
+        variant="outline"
+        size="stretch"
+        className="row-span-2"
+        icon={<Save size={22} />}
+        onClick={onSaveBill}
+      >
+        Save Bill
+      </Button>
+      <Button
+        variant="primary"
+        size="stretch"
+        className="row-span-2 justify-between px-5"
+        disabled={settlementDisabled}
+        onClick={onSettlement}
+      >
+        <span className="flex items-center gap-3">Settlement</span>
+        <ArrowRight size={26} />
+      </Button>
+
+      <Button size="secondary" icon={<Printer size={20} />} onClick={onBillPrint}>
+        {label('Print')}
+      </Button>
+      <Button size="secondary" icon={<ClipboardList size={20} />} onClick={onJobList}>
+        {label('Job List')}
+      </Button>
+
+      <div className={`relative ${moreOpen ? 'z-50' : ''}`}>
         <Button
-          variant="secondary"
-          size="primary"
-          icon={<Save size={24} />}
-          onClick={onSaveBill}
-          className="col-span-2"
+          size="secondary"
+          icon={<MoreHorizontal size={20} />}
+          onClick={() => setMoreOpen((v) => !v)}
+          className={[
+            'w-full',
+            moreOpen ? 'border-salon-primary/50 bg-salon-primary-light/40' : '',
+          ].join(' ')}
+          aria-expanded={moreOpen}
+          aria-haspopup="menu"
+          aria-controls={moreOpen ? menuId : undefined}
         >
-          Save Bill
+          {label('More')}
         </Button>
-        <Button
-          variant="secondary"
-          size="primary"
-          icon={<Banknote size={24} className="text-salon-success" />}
-          onClick={onQuickCash}
-          className="col-span-2"
-        >
-          Quick Cash
-        </Button>
-        <Button
-          variant="secondary"
-          size="primary"
-          icon={<CreditCard size={24} />}
-          onClick={onCard}
-          className="col-span-2"
-        >
-          Card
-        </Button>
-        <Button
-          variant="secondary"
-          size="primary"
-          icon={<QrCode size={24} className="text-salon-success" />}
-          onClick={onQrPay}
-          className="col-span-2"
-        >
-          QR Pay
-        </Button>
-        <Button
-          variant="primary"
-          size="primary"
-          disabled={settlementDisabled}
-          onClick={onSettlement}
-          className="col-span-4 justify-between"
-        >
-          <span className="flex items-center gap-3">Settlement</span>
-          <ArrowRight size={26} />
-        </Button>
+
+        {moreOpen && (
+          <>
+            <div className="fixed inset-0 z-40" aria-hidden onClick={closeMore} />
+            <div
+              id={menuId}
+              role="menu"
+              aria-label="More payment actions"
+              className={[
+                'absolute bottom-full right-0 z-50 mb-2',
+                'w-[min(100vw-1.5rem,17.5rem)] min-w-[13.5rem]',
+                'overflow-hidden rounded-xl',
+                'border border-white/50 bg-white/90 backdrop-blur-xl',
+                'shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_28px_rgba(31,17,20,0.14),0_2px_8px_rgba(31,17,20,0.06)]',
+              ].join(' ')}
+              style={{ animation: 'fadeIn 140ms ease-out' }}
+            >
+              <ul className="m-0 list-none divide-y divide-salon-border/80 p-0">
+                {moreItems.map((item) => (
+                  <li key={item.id} role="none">
+                    <MoreMenuRow item={item} onActivate={() => handleMoreSelect(item)} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
