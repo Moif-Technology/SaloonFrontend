@@ -89,6 +89,8 @@ export default function PosPage() {
     draft: string
     error: string | null
   } | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const selectionMode = selectedIds.size > 0
 
   function openQtyEdit(item: BillItem) {
     setQtyEdit({
@@ -220,6 +222,12 @@ export default function PosPage() {
 
   function handleRemove(id: string) {
     setBillItems((prev) => prev.filter((item) => item.id !== id))
+    setSelectedIds((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
   }
 
   function handleClear() {
@@ -227,7 +235,35 @@ export default function PosPage() {
     setBillItems([])
     setAppliedDiscount(null)
     setBillNote('')
+    setSelectedIds(new Set())
     showSnackbar('Bill cleared', 'info')
+  }
+
+  function handleEnterSelection(id: string) {
+    setSelectedIds(new Set([id]))
+  }
+
+  function handleToggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function handleCancelSelection() {
+    setSelectedIds(new Set())
+  }
+
+  function handleDeleteSelected() {
+    const count = selectedIds.size
+    setBillItems((prev) => prev.filter((item) => !selectedIds.has(item.id)))
+    setSelectedIds(new Set())
+    showSnackbar(`${count} item${count === 1 ? '' : 's'} removed`, 'info')
   }
 
   function handleOpenDiscount() {
@@ -469,6 +505,12 @@ export default function PosPage() {
             onRemove={handleRemove}
             onClear={handleClear}
             onEditQty={handleEditQty}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onEnterSelection={handleEnterSelection}
+            onToggleSelect={handleToggleSelect}
+            onCancelSelection={handleCancelSelection}
+            onDeleteSelected={handleDeleteSelected}
           />
         </aside>
 

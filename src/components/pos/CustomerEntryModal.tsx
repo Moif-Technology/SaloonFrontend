@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { X, ChevronLeft, ChevronRight, Save } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Save, Keyboard } from 'lucide-react'
 import Button from '../common/Button'
 import type { CustomerFormValues, CustomerWizardStep } from '../../types/customer'
 import {
@@ -13,6 +13,7 @@ import {
 } from '../../utils/customerValidation'
 import { createCustomer } from '../../api/customers.ts'
 import NumericKeypad from '../common/NumericKeypad'
+import AlphaKeyboard from '../common/AlphaKeyboard'
 import { applyNumericKey, type NumericKey } from '../../utils/numericInput'
 
 
@@ -44,6 +45,7 @@ export default function CustomerEntryModal({
   const [form, setForm] = useState<CustomerFormValues>(emptyForm)
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [keyboardField, setKeyboardField] = useState<'name' | 'email' | 'address' | null>(null)
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
 
@@ -54,7 +56,13 @@ export default function CustomerEntryModal({
     setForm(emptyForm)
     setFieldError(null)
     setSaving(false)
+    setKeyboardField(null)
   }, [open])
+
+  // Close the on-screen keyboard when moving between steps
+  useEffect(() => {
+    setKeyboardField(null)
+  }, [step])
 
   // Auto-focus active field whenever step changes / modal opens
   useEffect(() => {
@@ -225,11 +233,8 @@ export default function CustomerEntryModal({
     >
       <div
         ref={panelRef}
-      className={[
-  'flex w-full max-h-[min(720px,90dvh)] flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/90 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_32px_rgba(31,17,20,0.18)] transition-transform duration-200',
-  step === 2 ? 'max-w-[900px]' : 'max-w-[560px]',
-].join(' ')}
- >
+        className="flex w-full max-w-[720px] h-[min(560px,90dvh)] flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/90 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_32px_rgba(31,17,20,0.18)] transition-transform duration-200"
+      >
         {/* Header */}
         <header className="flex shrink-0 items-center justify-between border-b border-salon-border px-5 py-4">
           <div>
@@ -269,10 +274,10 @@ export default function CustomerEntryModal({
           onSubmit={onSubmit}
           className="flex min-h-0 flex-1 flex-col"
         >
-         <div className="flex min-h-0 flex-1 flex-col justify-start px-5 pt-5 pb-4">
+         <div className="flex min-h-0 flex-1 flex-col justify-start overflow-y-auto px-5 pt-5 pb-4">
             <div
               key={step}
-              className="animate-[fadeIn_0.2s_ease-out]"
+              className="w-full animate-[fadeIn_0.2s_ease-out]"
             >
               {step === 1 && (
                 <FieldBlock
@@ -280,22 +285,30 @@ export default function CustomerEntryModal({
                   required
                   error={fieldError}
                 >
-                  <input
-                    ref={inputRef as React.RefObject<HTMLInputElement>}
-                    type="text"
-                    autoComplete="name"
-                    enterKeyHint="next"
-                    value={form.name}
-                    onChange={(e) => updateField('name', e.target.value)}
-                    onKeyDown={onKeyDown}
-                    className={inputClass}
-                    placeholder="Enter full name"
-                  />
+                  <div className="relative">
+                    <input
+                      ref={inputRef as React.RefObject<HTMLInputElement>}
+                      type="text"
+                      autoComplete="name"
+                      enterKeyHint="next"
+                      value={form.name}
+                      onChange={(e) => updateField('name', e.target.value)}
+                      onKeyDown={onKeyDown}
+                      className={`${inputClass} pr-14`}
+                      placeholder="Enter full name"
+                    />
+                    <KeyboardToggleButton
+                      active={keyboardField === 'name'}
+                      onClick={() =>
+                        setKeyboardField((f) => (f === 'name' ? null : 'name'))
+                      }
+                    />
+                  </div>
                 </FieldBlock>
               )}
 
 {step === 2 && (
-  <div className="flex min-h-[320px] items-start gap-4">
+  <div className="flex items-start gap-4">
     {/* LEFT: active field only */}
     <div className="flex w-[45%] flex-col justify-start">
       <FieldBlock label="Mobile Number" required error={fieldError}>
@@ -317,7 +330,7 @@ export default function CustomerEntryModal({
     <div className="w-[55%] rounded-xl bg-salon-bg p-3">
       <NumericKeypad
         allowDecimal={false}
-        doneLabel="Next"
+        showDone={false}
         onKey={handleMobileKey}
         onDone={goNext}
       />
@@ -327,40 +340,55 @@ export default function CustomerEntryModal({
 
 {step === 3 && (
   <FieldBlock label="Email" required={false} error={fieldError}>
-    <input
-      ref={inputRef as React.RefObject<HTMLInputElement>}
-      type="email"
-      inputMode="email"
-      autoComplete="email"
-      enterKeyHint="next"
-      value={form.email}
-      onChange={(e) => updateField('email', e.target.value)}
-      onKeyDown={onKeyDown}
-      className={inputClass}
-      placeholder="Optional"
-    />
+    <div className="relative">
+      <input
+        ref={inputRef as React.RefObject<HTMLInputElement>}
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        enterKeyHint="next"
+        value={form.email}
+        onChange={(e) => updateField('email', e.target.value)}
+        onKeyDown={onKeyDown}
+        className={`${inputClass} pr-14`}
+        placeholder="Optional"
+      />
+      <KeyboardToggleButton
+        active={keyboardField === 'email'}
+        onClick={() => setKeyboardField((f) => (f === 'email' ? null : 'email'))}
+      />
+    </div>
   </FieldBlock>
 )}
 
               {step === 4 && (
                 <FieldBlock label="Address" required={false} error={fieldError}>
-                  <textarea
-                    ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-                    rows={3}
-                    enterKeyHint="done"
-                    value={form.address}
-                    onChange={(e) => updateField('address', e.target.value)}
-                    onKeyDown={onKeyDown}
-                    className={`${inputClass} resize-none`}
-                    placeholder="Optional"
-                  />
+                  <div className="relative">
+                    <textarea
+                      ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+                      rows={3}
+                      enterKeyHint="done"
+                      value={form.address}
+                      onChange={(e) => updateField('address', e.target.value)}
+                      onKeyDown={onKeyDown}
+                      className={`${inputClass} resize-none pr-14`}
+                      placeholder="Optional"
+                    />
+                    <KeyboardToggleButton
+                      top="top-6"
+                      active={keyboardField === 'address'}
+                      onClick={() =>
+                        setKeyboardField((f) => (f === 'address' ? null : 'address'))
+                      }
+                    />
+                  </div>
                 </FieldBlock>
               )}
             </div>
           </div>
 
           {/* Fixed footer navigation — always visible */}
-          <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-salon-border bg-salon-bg/80 px-4 py-3 backdrop-blur-sm md:gap-3 md:px-5 md:py-4">
+          <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-salon-border bg-salon-bg/80 px-3 py-2.5 backdrop-blur-sm">
             {step > 1 && (
               <Button
                 type="button"
@@ -417,7 +445,77 @@ export default function CustomerEntryModal({
           </footer>
         </form>
       </div>
+
+      {/* Click-outside catcher — closes the keyboard without closing the modal */}
+      {keyboardField && (
+        <div
+          className="fixed inset-0 z-[105]"
+          aria-hidden
+          onClick={() => setKeyboardField(null)}
+        />
+      )}
+
+      {/* Alphabet keyboard — slides up from the bottom of the whole screen */}
+      <div
+        className={[
+          'fixed inset-x-0 bottom-0 z-[110] rounded-t-2xl border-t border-salon-border bg-white shadow-[0_-8px_32px_rgba(31,17,20,0.25)] transition-transform duration-300 ease-out',
+          keyboardField ? 'translate-y-0' : 'translate-y-full',
+        ].join(' ')}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+          <span className="text-sm font-semibold text-salon-muted">Keyboard</span>
+          <button
+            type="button"
+            onClick={() => setKeyboardField(null)}
+            aria-label="Close keyboard"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-salon-muted hover:bg-black/5"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-3 pt-1">
+          {keyboardField && (
+            <AlphaKeyboard
+              onChar={(c) => updateField(keyboardField, form[keyboardField] + c)}
+              onBackspace={() =>
+                updateField(keyboardField, form[keyboardField].slice(0, -1))
+              }
+              onDone={() => setKeyboardField(null)}
+            />
+          )}
+        </div>
+      </div>
     </div>
+  )
+}
+
+function KeyboardToggleButton({
+  active,
+  onClick,
+  top = 'top-1/2',
+}: {
+  active: boolean
+  onClick: () => void
+  /** Tailwind top-position class; textarea needs a fixed offset instead of centering. */
+  top?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Toggle on-screen keyboard"
+      aria-pressed={active}
+      className={[
+        'absolute right-2 mt-1 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg transition-colors',
+        top,
+        active
+          ? 'bg-salon-primary text-white'
+          : 'bg-salon-bg text-salon-muted hover:bg-salon-primary-light',
+      ].join(' ')}
+    >
+      <Keyboard size={20} />
+    </button>
   )
 }
 

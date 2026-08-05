@@ -20,7 +20,7 @@ export default function ServicePanel({
   onBack,
 }: ServicePanelProps) {
   return (
-    <section className="flex h-full flex-col bg-gradient-to-br from-salon-accent/[0.09] via-white/45 to-white/45 backdrop-blur-2xl">
+    <section className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/40 bg-gradient-to-br from-salon-accent/[0.09] via-white/45 to-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_32px_rgba(31,17,20,0.10)] backdrop-blur-2xl">
       <header className="flex items-center gap-2 border-b border-salon-accent/20 bg-salon-accent/[0.06] px-3 py-2.5 sm:gap-3 sm:px-5 sm:py-4">
         {activeGroup ? (
           <>

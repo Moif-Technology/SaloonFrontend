@@ -9,13 +9,14 @@ interface NumericKeypadProps {
   doneLabel?: string
   className?: string
   disabled?: boolean
+  /** Show the built-in Done key. Turn off when a parent already has its own Next/Done action (e.g. wizard footer). */
+  showDone?: boolean
 }
 
 const DIGIT_ROWS: NumericKey[][] = [
-  ['7', '8', '9'],
-  ['4', '5', '6'],
   ['1', '2', '3'],
-  ['00', '0', '.'],
+  ['4', '5', '6'],
+  ['7', '8', '9'],
 ]
 
 export default function NumericKeypad({
@@ -25,42 +26,47 @@ export default function NumericKeypad({
   doneLabel = 'Done',
   className = '',
   disabled,
+  showDone = true,
 }: NumericKeypadProps) {
   return (
     <div
-      className={`grid h-full grid-rows-[1fr_1fr_1fr_1fr_auto] gap-2 select-none ${className}`}
+      className={[
+        'grid h-full gap-2 select-none',
+        showDone ? 'grid-rows-[1fr_1fr_1fr_1fr_auto]' : 'grid-rows-[1fr_1fr_1fr_1fr]',
+        className,
+      ].join(' ')}
       role="group"
       aria-label="Numeric keypad"
     >
       {DIGIT_ROWS.map((row, ri) => (
         <div key={ri} className="grid grid-cols-3 gap-2 min-h-0">
-          {row.map((key) => {
-            const isDot = key === '.'
-            if (isDot && !allowDecimal) {
-              return (
-                <KeyButton
-                  key="blank"
-                  label=""
-                  disabled
-                  className="invisible"
-                  onPress={() => {}}
-                />
-              )
-            }
-            return (
-              <KeyButton
-                key={key}
-                label={key}
-                disabled={disabled}
-                onPress={() => onKey(key)}
-              />
-            )
-          })}
+          {row.map((key) => (
+            <KeyButton
+              key={key}
+              label={key}
+              disabled={disabled}
+              onPress={() => onKey(key)}
+            />
+          ))}
         </div>
       ))}
 
-      {/* Bottom: Backspace | Clear | Done */}
-      <div className="grid grid-cols-3 gap-2 shrink-0">
+      {/* Bottom digit row: . | 0 | backspace */}
+      <div className="grid grid-cols-3 gap-2 min-h-0">
+        {allowDecimal ? (
+          <KeyButton
+            label="."
+            disabled={disabled}
+            onPress={() => onKey('.')}
+          />
+        ) : (
+          <KeyButton label="" disabled className="invisible" onPress={() => {}} />
+        )}
+        <KeyButton
+          label="0"
+          disabled={disabled}
+          onPress={() => onKey('0')}
+        />
         <KeyButton
           label="←"
           ariaLabel="Backspace"
@@ -68,19 +74,20 @@ export default function NumericKeypad({
           onPress={() => onKey('backspace')}
           variant="muted"
         />
-        <KeyButton
-          label="Clear"
-          disabled={disabled}
-          onPress={() => onKey('clear')}
-          variant="muted"
-        />
-        <KeyButton
-          label={doneLabel}
-          disabled={disabled}
-          onPress={() => onDone?.()}
-          variant="primary"
-        />
       </div>
+
+      {/* Done */}
+      {showDone && (
+        <div className="shrink-0">
+          <KeyButton
+            label={doneLabel}
+            disabled={disabled}
+            onPress={() => onDone?.()}
+            variant="primary"
+            className="w-full"
+          />
+        </div>
+      )}
     </div>
   )
 }

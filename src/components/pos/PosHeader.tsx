@@ -21,7 +21,7 @@ export default function PosHeader({
   onMore,
 }: PosHeaderProps) {
   return (
-    <header className="relative z-10 flex h-14 shrink-0 items-center justify-between bg-gradient-to-b from-salon-primary/85 to-salon-primary-dark/85 px-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_4px_24px_rgba(121,7,40,0.25)] backdrop-blur-xl after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-1/2 after:bg-gradient-to-b after:from-white/10 after:to-transparent sm:h-16 sm:px-5">
+    <header className="relative z-10 flex h-14 shrink-0 items-center justify-between bg-gradient-to-b from-[#93122f] via-salon-primary to-salon-primary-dark px-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_4px_24px_rgba(92,5,32,0.45)] after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-1/2 after:bg-gradient-to-b after:from-white/15 after:to-transparent sm:h-16 sm:px-5">
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={onMenu}

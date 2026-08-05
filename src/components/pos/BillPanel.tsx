@@ -1,4 +1,4 @@
-import { ShoppingCart, Trash2 } from 'lucide-react'
+import { ShoppingCart, Trash2, X } from 'lucide-react'
 import BillItemRow from './BillItemRow'
 import IconButton from '../common/IconButton'
 import type { BillItem, BillTotals } from '../../types/pos'
@@ -12,6 +12,12 @@ interface BillPanelProps {
   onRemove: (id: string) => void
   onClear: () => void
   onEditQty?: (id: string) => void
+  selectionMode?: boolean
+  selectedIds?: Set<string>
+  onEnterSelection?: (id: string) => void
+  onToggleSelect?: (id: string) => void
+  onCancelSelection?: () => void
+  onDeleteSelected?: () => void
 }
 
 export default function BillPanel({
@@ -22,27 +28,59 @@ export default function BillPanel({
   onRemove,
   onClear,
   onEditQty,
+  selectionMode = false,
+  selectedIds,
+  onEnterSelection,
+  onToggleSelect,
+  onCancelSelection,
+  onDeleteSelected,
 }: BillPanelProps) {
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/40 bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_32px_rgba(31,17,20,0.10)] backdrop-blur-2xl">
-      <header className="flex shrink-0 items-center justify-between border-b border-white/40 bg-white/20 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2 text-salon-text">
-          <ShoppingCart size={22} className="shrink-0 text-salon-primary" />
-          <h2 className="truncate text-lg font-bold tracking-tight sm:text-xl">
-            Current Bill
-            <span className="ml-1.5 font-semibold text-salon-muted">({items.length})</span>
-          </h2>
-        </div>
-        <IconButton
-          variant="danger"
-          sizeClassName="w-8 h-8 sm:w-9 sm:h-9"
-          onClick={onClear}
-          disabled={items.length === 0}
-          aria-label="Clear all items"
-        >
-          <Trash2 size={18} />
-        </IconButton>
-      </header>
+      {selectionMode ? (
+        <header className="flex shrink-0 items-center justify-between border-b border-white/40 bg-salon-primary-light/60 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2 text-salon-text">
+            <button
+              type="button"
+              onClick={onCancelSelection}
+              aria-label="Cancel selection"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-salon-primary hover:bg-white/50 sm:h-9 sm:w-9"
+            >
+              <X size={18} />
+            </button>
+            <h2 className="truncate text-lg font-bold tracking-tight text-salon-primary sm:text-xl">
+              {selectedIds?.size ?? 0} selected
+            </h2>
+          </div>
+          <IconButton
+            variant="danger"
+            sizeClassName="w-8 h-8 sm:w-9 sm:h-9"
+            onClick={onDeleteSelected}
+            aria-label="Delete selected items"
+          >
+            <Trash2 size={18} />
+          </IconButton>
+        </header>
+      ) : (
+        <header className="flex shrink-0 items-center justify-between border-b border-white/40 bg-white/20 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2 text-salon-text">
+            <ShoppingCart size={22} className="shrink-0 text-salon-primary" />
+            <h2 className="truncate text-lg font-bold tracking-tight sm:text-xl">
+              Current Bill
+              <span className="ml-1.5 font-semibold text-salon-muted">({items.length})</span>
+            </h2>
+          </div>
+          <IconButton
+            variant="danger"
+            sizeClassName="w-8 h-8 sm:w-9 sm:h-9"
+            onClick={onClear}
+            disabled={items.length === 0}
+            aria-label="Clear all items"
+          >
+            <Trash2 size={18} />
+          </IconButton>
+        </header>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {items.length === 0 ? (
@@ -72,6 +110,10 @@ export default function BillPanel({
                   onDecrement={onDecrement}
                   onRemove={onRemove}
                   onEditQty={onEditQty}
+                  selectionMode={selectionMode}
+                  selected={selectedIds?.has(item.id) ?? false}
+                  onEnterSelection={onEnterSelection}
+                  onToggleSelect={onToggleSelect}
                 />
               ))}
             </div>
