@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { X, Search, Clock, User, Phone, Scissors } from 'lucide-react'
+import { X, Search } from 'lucide-react'
 import Button from '../common/Button'
 import type {
   Appointment,
@@ -190,7 +190,7 @@ export default function AppointmentListModal({
               No appointments for this day / filter.
             </p>
           ) : (
-            <ul className="flex flex-col gap-3">
+            <ul className="flex flex-col gap-2">
               {visible.map((a) => {
                 const alreadyLoaded =
                   loadedAppointmentIds.has(a.id) || a.loadedIntoBill === true
@@ -198,60 +198,61 @@ export default function AppointmentListModal({
                   alreadyLoaded ||
                   a.status === 'cancelled' ||
                   a.status === 'completed'
+                const serviceNames = a.services.map((s) => s.name).join(', ')
 
                 return (
                   <li
                     key={a.id}
-                    className="rounded-2xl border border-salon-border bg-salon-bg/40 p-4"
+                    className="rounded-xl border border-salon-border bg-salon-bg/40 px-3 py-2.5"
                   >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 text-lg font-bold tabular-nums text-salon-text">
-                            <Clock size={18} className="text-salon-primary" />
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        {/* Compact header: time · status · customer */}
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="shrink-0 text-[15px] font-bold tabular-nums leading-none text-salon-primary">
                             {formatTime12(a.time)}
                           </span>
                           <span
                             className={[
-                              'rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-wide',
+                              'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide',
                               statusBadgeClass(a.status),
                             ].join(' ')}
                           >
                             {statusLabel(a.status)}
                           </span>
+                          <p className="min-w-0 truncate text-[15px] leading-tight">
+                            <span className="font-semibold text-salon-text">
+                              {a.customerName}
+                            </span>
+                            {a.mobile ? (
+                              <span className="font-medium text-salon-muted">
+                                {' '}
+                                • {a.mobile}
+                              </span>
+                            ) : null}
+                          </p>
                         </div>
 
-                        <p className="flex items-center gap-2 text-lg font-semibold text-salon-text">
-                          <User size={18} className="shrink-0 text-salon-muted" />
-                          {a.customerName}
+                        {/* Services + stylist (dense secondary block) */}
+                        <p
+                          className="mt-1 line-clamp-2 text-sm leading-snug text-salon-text"
+                          title={serviceNames}
+                        >
+                          {serviceNames}
                         </p>
-
-                        {a.mobile ? (
-                          <p className="flex items-center gap-2 text-base font-medium text-salon-muted">
-                            <Phone size={16} className="shrink-0" />
-                            {a.mobile}
-                          </p>
-                        ) : null}
-
-                        <p className="flex items-start gap-2 text-base text-salon-text">
-                          <Scissors
-                            size={16}
-                            className="mt-0.5 shrink-0 text-salon-muted"
-                          />
-                          <span>
-                            {a.services.map((s) => s.name).join(', ')}
-                          </span>
+                        <p className="mt-0.5 truncate text-xs font-medium leading-snug text-salon-muted">
+                          {a.stylistName ? (
+                            <span>Stylist: {a.stylistName}</span>
+                          ) : (
+                            <span>Stylist: —</span>
+                          )}
+                          {a.notes ? (
+                            <span className="text-salon-muted/80">
+                              {' '}
+                              · Note: {a.notes}
+                            </span>
+                          ) : null}
                         </p>
-
-                        <p className="text-sm font-medium text-salon-muted">
-                          Stylist: {a.stylistName ?? '—'}
-                        </p>
-
-                        {a.notes ? (
-                          <p className="text-sm text-salon-muted">
-                            Note: {a.notes}
-                          </p>
-                        ) : null}
                       </div>
 
                       <Button
@@ -260,7 +261,7 @@ export default function AppointmentListModal({
                         size="compact"
                         disabled={blocked}
                         onClick={() => onSelect(a)}
-                        className="h-12 min-w-[160px] shrink-0 self-stretch md:self-center"
+                        className="h-11 min-w-[132px] shrink-0 self-center px-3 text-sm"
                       >
                         {alreadyLoaded ? 'Already on bill' : 'Convert to Bill'}
                       </Button>
