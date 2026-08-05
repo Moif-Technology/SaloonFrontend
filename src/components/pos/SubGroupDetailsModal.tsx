@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { X, Layers, Save, Tag, RotateCcw } from 'lucide-react'
+import { X, Layers, Save } from 'lucide-react'
 import Button from '../common/Button'
 import { createSubGroup, updateSubGroup } from '../../api/subGroups'
 import { fetchGroups } from '../../api/groups'
@@ -16,6 +16,47 @@ export interface SubGroupDetailsModalProps {
   initialSubGroup?: CatalogueSubGroup | null
   onSaved?: (subGroup: CatalogueSubGroup) => void
   onError?: (message: string) => void
+}
+
+/** Sequential system codes: SGRP-001, SGRP-002, … (not derived from name) */
+const SUBGROUP_CODE_PREFIX = 'SGRP-'
+const SUBGROUP_CODE_SEQ_KEY = 'salon-pos-subgroup-code-seq'
+
+function formatSubGroupSystemCode(seq: number): string {
+  return `${SUBGROUP_CODE_PREFIX}${String(seq).padStart(3, '0')}`
+}
+
+function readSubGroupCodeSeq(): number {
+  try {
+    const n = Number(localStorage.getItem(SUBGROUP_CODE_SEQ_KEY))
+    return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1
+  } catch {
+    return 1
+  }
+}
+
+/** Next unused sequential code (does not advance the counter). */
+function peekNextSystemSubGroupCode(): string {
+  return formatSubGroupSystemCode(readSubGroupCodeSeq())
+}
+
+/**
+ * After a successful create, keep the sequence ahead of any SGRP-### code used.
+ */
+function advanceSubGroupCodeSeqAfterSave(code: string) {
+  const match = code
+    .trim()
+    .toUpperCase()
+    .match(/^SGRP-(\d+)$/)
+  if (!match) return
+  const used = Number(match[1])
+  if (!Number.isFinite(used) || used < 1) return
+  try {
+    const next = Math.max(readSubGroupCodeSeq(), used + 1)
+    localStorage.setItem(SUBGROUP_CODE_SEQ_KEY, String(next))
+  } catch {
+    // ignore storage failures
+  }
 }
 
 const emptyForm: SubGroupFormValues = {
@@ -43,31 +84,35 @@ export default function SubGroupDetailsModal({
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [loadingGroups, setLoadingGroups] = useState(false)
+  /** Auto = system sequential code (locked); Manual = free-form entry */
+  const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto')
 
   const isEdit = Boolean(initialSubGroup?.id)
 
-  function resetForm(from?: CatalogueSubGroup | null) {
-    if (from) {
+  useEffect(() => {
+    if (!open) return
+    if (initialSubGroup) {
       setForm({
-        parentGroupId: from.parentGroupId ?? '',
-        code: from.code ?? '',
-        name: from.name ?? '',
-        nameAr: from.nameAr ?? '',
-        showOnBackOffice: from.showOnBackOffice ?? false,
+        parentGroupId: initialSubGroup.parentGroupId ?? '',
+        code: initialSubGroup.code ?? '',
+        name: initialSubGroup.name ?? '',
+        nameAr: initialSubGroup.nameAr ?? '',
+        showOnBackOffice: initialSubGroup.showOnBackOffice ?? false,
       })
+      // Edit: Manual so existing system/custom codes stay editable
+      setCodeMode('manual')
     } else {
-      setForm(emptyForm)
+      setForm({
+        ...emptyForm,
+        code: peekNextSystemSubGroupCode(),
+      })
+      setCodeMode('auto')
     }
     setFieldError(null)
     setSaving(false)
-  }
-
-  useEffect(() => {
-    if (!open) return
-    resetForm(initialSubGroup)
   }, [open, initialSubGroup])
 
-  // Load parent groups — copy of ProductDetailsModal loadGroups
+  // Load parent groups
   useEffect(() => {
     if (!open) return
     let cancelled = false
@@ -98,8 +143,6 @@ export default function SubGroupDetailsModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  if (!open) return null
-
   function updateField<K extends keyof SubGroupFormValues>(
     key: K,
     value: SubGroupFormValues[K],
@@ -108,21 +151,36 @@ export default function SubGroupDetailsModal({
     setFieldError(null)
   }
 
-  function handleNew() {
-    resetForm(null)
+  function handleCodeChange(code: string) {
+    updateField('code', code)
+  }
+
+  function handleCodeModeChange(mode: 'auto' | 'manual') {
+    setCodeMode(mode)
+    setFieldError(null)
+    if (mode === 'auto') {
+      // System sequential code — never derived from name or parent group
+      updateField('code', peekNextSystemSubGroupCode())
+    }
+    // Manual: keep current code so user can edit it
+  }
+
+  /** Parent selection only — never mutates code or codeMode */
+  function handleParentGroupChange(parentGroupId: string) {
+    updateField('parentGroupId', parentGroupId)
   }
 
   async function handleSave() {
-    if (!form.parentGroupId) {
-      const message = 'Parent group is required'
+    const code = (form.code ?? '').trim()
+    if (!code) {
+      const message = 'Code is required'
       setFieldError(message)
       onError?.(message)
       return
     }
 
-    const code = form.code.trim()
-    if (!code) {
-      const message = 'Sub group code is required'
+    if (!form.parentGroupId) {
+      const message = 'Parent group is required'
       setFieldError(message)
       onError?.(message)
       return
@@ -157,6 +215,10 @@ export default function SubGroupDetailsModal({
           ? await updateSubGroup(initialSubGroup.id, payload)
           : await createSubGroup(payload)
 
+      if (!isEdit) {
+        advanceSubGroupCodeSeqAfterSave(code)
+      }
+
       onSaved?.(result)
       onClose()
     } catch {
@@ -173,6 +235,8 @@ export default function SubGroupDetailsModal({
     void handleSave()
   }
 
+  if (!open) return null
+
   return (
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-3 sm:p-4"
@@ -184,7 +248,6 @@ export default function SubGroupDetailsModal({
       }}
     >
       <div className="flex w-full max-h-[min(640px,92dvh)] max-w-[560px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
-        {/* Header — same as GroupDetailsModal ~130–157 */}
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-salon-border px-4 py-3.5 sm:px-5 sm:py-4">
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">
@@ -216,7 +279,86 @@ export default function SubGroupDetailsModal({
 
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-            {/* Parent Group — mandatory */}
+            {/* 1. Code — Auto/Manual; independent of parent & name */}
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label
+                  htmlFor="sub-group-code"
+                  className="text-sm font-semibold text-salon-text"
+                >
+                  Code <span className="text-salon-danger">*</span>
+                </label>
+
+                <div
+                  className="inline-flex h-9 shrink-0 items-center rounded-lg border-2 border-salon-border bg-salon-bg p-0.5"
+                  role="group"
+                  aria-label="Code entry mode"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleCodeModeChange('auto')}
+                    className={`h-full min-w-[4.5rem] rounded-md px-3 text-xs font-bold transition-colors ${
+                      codeMode === 'auto'
+                        ? 'bg-salon-primary text-white shadow-sm'
+                        : 'text-salon-muted hover:text-salon-text'
+                    }`}
+                    aria-pressed={codeMode === 'auto'}
+                  >
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCodeModeChange('manual')}
+                    className={`h-full min-w-[4.5rem] rounded-md px-3 text-xs font-bold transition-colors ${
+                      codeMode === 'manual'
+                        ? 'bg-salon-primary text-white shadow-sm'
+                        : 'text-salon-muted hover:text-salon-text'
+                    }`}
+                    aria-pressed={codeMode === 'manual'}
+                  >
+                    Manual
+                  </button>
+                </div>
+              </div>
+
+              <input
+                id="sub-group-code"
+                type="text"
+                autoComplete="off"
+                required
+                value={form.code ?? ''}
+                onChange={(e) => handleCodeChange(e.target.value)}
+                readOnly={codeMode === 'auto'}
+                tabIndex={codeMode === 'auto' ? -1 : 0}
+                className={`${inputClass} ${
+                  codeMode === 'auto'
+                    ? 'cursor-not-allowed bg-salon-bg font-semibold tracking-wide text-salon-primary'
+                    : ''
+                }`}
+                placeholder={
+                  codeMode === 'auto'
+                    ? 'Generating…'
+                    : 'e.g. SGRP-001 or custom'
+                }
+                aria-required="true"
+              />
+              {codeMode === 'auto' ? (
+                <p className="mt-1.5 text-xs font-medium text-salon-muted">
+                  System-generated sequential code. Switch to Manual to type a
+                  custom code.
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs font-medium text-salon-muted">
+                  Enter a unique code, or switch to Auto for{' '}
+                  <span className="font-semibold text-salon-primary">
+                    {SUBGROUP_CODE_PREFIX}###
+                  </span>
+                  .
+                </p>
+              )}
+            </div>
+
+            {/* 2. Parent Group */}
             <div>
               <label
                 htmlFor="sub-group-parent"
@@ -227,9 +369,10 @@ export default function SubGroupDetailsModal({
               <select
                 id="sub-group-parent"
                 value={form.parentGroupId}
-                onChange={(e) => updateField('parentGroupId', e.target.value)}
+                onChange={(e) => handleParentGroupChange(e.target.value)}
                 className={selectClass}
                 disabled={loadingGroups}
+                aria-required="true"
               >
                 <option value="">
                   {loadingGroups ? 'Loading groups…' : 'Select a parent group'}
@@ -242,35 +385,7 @@ export default function SubGroupDetailsModal({
               </select>
             </div>
 
-            {/* Code / ID — mandatory + tag icon */}
-            <div>
-              <label
-                htmlFor="sub-group-code"
-                className="text-sm font-semibold text-salon-text"
-              >
-                Sub Group Code / ID{' '}
-                <span className="text-salon-danger">*</span>
-              </label>
-              <div className="relative mt-1.5">
-                <input
-                  id="sub-group-code"
-                  type="text"
-                  autoComplete="off"
-                  value={form.code}
-                  onChange={(e) => updateField('code', e.target.value)}
-                  className={`${inputClass} mt-0 pr-12`}
-                  placeholder="e.g. HT"
-                />
-                <span
-                  className="pointer-events-none absolute inset-y-0 right-0 flex w-12 items-center justify-center text-salon-primary"
-                  aria-hidden
-                >
-                  <Tag size={20} />
-                </span>
-              </div>
-            </div>
-
-            {/* Name * */}
+            {/* 3. Sub Group Name */}
             <div>
               <label
                 htmlFor="sub-group-name"
@@ -287,6 +402,7 @@ export default function SubGroupDetailsModal({
                 onChange={(e) => updateField('name', e.target.value)}
                 className={inputClass}
                 placeholder="e.g. Hair Spa"
+                aria-required="true"
               />
               {fieldError && (
                 <p className="mt-1.5 text-sm font-medium text-salon-danger">
@@ -295,7 +411,7 @@ export default function SubGroupDetailsModal({
               )}
             </div>
 
-            {/* Arabic name */}
+            {/* Sub Group Name Arabic (optional) */}
             <div>
               <label
                 htmlFor="sub-group-name-ar"
@@ -332,42 +448,27 @@ export default function SubGroupDetailsModal({
             </label>
           </div>
 
-          {/* Footer: New | Cancel | Save — same as ProductDetailsModal ~440–475 */}
-          <footer className="flex shrink-0 flex-wrap items-center gap-3 border-t border-salon-border px-4 py-3.5 sm:px-5">
-            {!isEdit && (
-              <Button
-                type="button"
-                variant="outline"
-                size="compact"
-                onClick={handleNew}
-                disabled={saving}
-                icon={<RotateCcw size={18} />}
-              >
-                New
-              </Button>
-            )}
-            <div className="ml-auto flex min-w-0 flex-1 gap-3 sm:flex-initial sm:justify-end">
-              <Button
-                type="button"
-                variant="secondary"
-                size="compact"
-                fullWidth
-                onClick={onClose}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="compact"
-                fullWidth
-                disabled={saving}
-                icon={<Save size={18} />}
-              >
-                {saving ? 'Saving…' : isEdit ? 'Update' : 'Save'}
-              </Button>
-            </div>
+          <footer className="flex shrink-0 gap-3 border-t border-salon-border px-4 py-3.5 sm:px-5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="compact"
+              fullWidth
+              onClick={onClose}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="compact"
+              fullWidth
+              disabled={saving}
+              icon={<Save size={18} />}
+            >
+              {saving ? 'Saving…' : isEdit ? 'Update' : 'Save'}
+            </Button>
           </footer>
         </form>
       </div>

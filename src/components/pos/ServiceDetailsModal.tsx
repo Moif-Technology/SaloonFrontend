@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { X, Scissors, Save, Tag, RotateCcw } from 'lucide-react'
+import { X, Scissors, Save, RotateCcw } from 'lucide-react'
 import Button from '../common/Button'
 import { createService, updateService } from '../../api/services'
 import { fetchGroups } from '../../api/groups'
@@ -17,6 +17,48 @@ export interface ServiceDetailsModalProps {
   initialService?: CatalogueService | null
   onSaved?: (service: CatalogueService) => void
   onError?: (message: string) => void
+}
+
+/** Sequential system codes: SRV-001, SRV-002, … (not derived from service name) */
+const SERVICE_CODE_PREFIX = 'SRV-'
+const SERVICE_CODE_SEQ_KEY = 'salon-pos-service-code-seq'
+
+function formatServiceSystemCode(seq: number): string {
+  return `${SERVICE_CODE_PREFIX}${String(seq).padStart(3, '0')}`
+}
+
+function readServiceCodeSeq(): number {
+  try {
+    const n = Number(localStorage.getItem(SERVICE_CODE_SEQ_KEY))
+    return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1
+  } catch {
+    return 1
+  }
+}
+
+/** Next unused sequential code (does not advance the counter). */
+function peekNextSystemServiceCode(): string {
+  return formatServiceSystemCode(readServiceCodeSeq())
+}
+
+/**
+ * After a successful create, keep the sequence ahead of any SRV-### code used
+ * so the next open still gets a free number.
+ */
+function advanceServiceCodeSeqAfterSave(code: string) {
+  const match = code
+    .trim()
+    .toUpperCase()
+    .match(/^SRV-(\d+)$/)
+  if (!match) return
+  const used = Number(match[1])
+  if (!Number.isFinite(used) || used < 1) return
+  try {
+    const next = Math.max(readServiceCodeSeq(), used + 1)
+    localStorage.setItem(SERVICE_CODE_SEQ_KEY, String(next))
+  } catch {
+    // ignore storage failures
+  }
 }
 
 const emptyForm: ServiceFormValues = {
@@ -49,6 +91,8 @@ export default function ServiceDetailsModal({
   const [saving, setSaving] = useState(false)
   const [loadingGroups, setLoadingGroups] = useState(false)
   const [loadingSubGroups, setLoadingSubGroups] = useState(false)
+  /** Auto = system sequential code (locked); Manual = free-form entry */
+  const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto')
 
   const isEdit = Boolean(initialService?.id)
 
@@ -64,8 +108,14 @@ export default function ServiceDetailsModal({
         durationMinutes: from.durationMinutes,
         showOnBackOffice: from.showOnBackOffice ?? false,
       })
+      // Edit: Manual so existing system/custom codes stay editable
+      setCodeMode('manual')
     } else {
-      setForm(emptyForm)
+      setForm({
+        ...emptyForm,
+        code: peekNextSystemServiceCode(),
+      })
+      setCodeMode('auto')
     }
     setFieldError(null)
     setSaving(false)
@@ -76,7 +126,6 @@ export default function ServiceDetailsModal({
     resetForm(initialService)
   }, [open, initialService])
 
-  // Load groups — same as ProductDetailsModal loadGroups
   useEffect(() => {
     if (!open) return
     let cancelled = false
@@ -98,7 +147,6 @@ export default function ServiceDetailsModal({
     }
   }, [open, onError])
 
-  // Load sub-groups when group changes
   useEffect(() => {
     if (!open || !form.groupId) {
       setSubGroups([])
@@ -140,11 +188,22 @@ export default function ServiceDetailsModal({
   ) {
     setForm((prev) => {
       const next = { ...prev, [key]: value }
-      // Reset dependent sub-group when group changes
       if (key === 'groupId') next.subGroupId = ''
       return next
     })
     setFieldError(null)
+  }
+
+  function handleCodeChange(code: string) {
+    updateField('code', code)
+  }
+
+  function handleCodeModeChange(mode: 'auto' | 'manual') {
+    setCodeMode(mode)
+    setFieldError(null)
+    if (mode === 'auto') {
+      updateField('code', peekNextSystemServiceCode())
+    }
   }
 
   function handleNew() {
@@ -152,7 +211,7 @@ export default function ServiceDetailsModal({
   }
 
   async function handleSave() {
-    const code = form.code.trim()
+    const code = (form.code ?? '').trim()
     if (!code) {
       const message = 'Service code is required'
       setFieldError(message)
@@ -216,6 +275,10 @@ export default function ServiceDetailsModal({
           ? await updateService(initialService.id, payload)
           : await createService(payload)
 
+      if (!isEdit) {
+        advanceServiceCodeSeqAfterSave(code)
+      }
+
       onSaved?.(result)
       onClose()
     } catch {
@@ -232,10 +295,7 @@ export default function ServiceDetailsModal({
     void handleSave()
   }
 
-  function optionalNumber(
-    value: string,
-    key: 'price' | 'durationMinutes',
-  ) {
+  function optionalNumber(value: string, key: 'price' | 'durationMinutes') {
     updateField(key, value === '' ? undefined : Number(value))
   }
 
@@ -250,7 +310,6 @@ export default function ServiceDetailsModal({
       }}
     >
       <div className="flex w-full max-h-[min(720px,92dvh)] max-w-[560px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
-        {/* Header — same as GroupDetailsModal ~130–157 */}
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-salon-border px-4 py-3.5 sm:px-5 sm:py-4">
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">
@@ -282,32 +341,81 @@ export default function ServiceDetailsModal({
 
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-            {/* Service Code * + Tag icon (like SubGroupDetailsModal code field) */}
+            {/* Code — above Service Name; Auto locks sequential system code */}
             <div>
-              <label
-                htmlFor="service-code"
-                className="text-sm font-semibold text-salon-text"
-              >
-                Service Code / ID <span className="text-salon-danger">*</span>
-              </label>
-              <div className="relative mt-1.5">
-                <input
-                  id="service-code"
-                  type="text"
-                  autoFocus
-                  autoComplete="off"
-                  value={form.code}
-                  onChange={(e) => updateField('code', e.target.value)}
-                  className={`${inputClass} mt-0 pr-12`}
-                  placeholder="e.g. SVC-001"
-                />
-                <span
-                  className="pointer-events-none absolute inset-y-0 right-0 flex w-12 items-center justify-center text-salon-primary"
-                  aria-hidden
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label
+                  htmlFor="service-code"
+                  className="text-sm font-semibold text-salon-text"
                 >
-                  <Tag size={20} />
-                </span>
+                  Code <span className="text-salon-danger">*</span>
+                </label>
+
+                <div
+                  className="inline-flex h-9 shrink-0 items-center rounded-lg border-2 border-salon-border bg-salon-bg p-0.5"
+                  role="group"
+                  aria-label="Code entry mode"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleCodeModeChange('auto')}
+                    className={`h-full min-w-[4.5rem] rounded-md px-3 text-xs font-bold transition-colors ${
+                      codeMode === 'auto'
+                        ? 'bg-salon-primary text-white shadow-sm'
+                        : 'text-salon-muted hover:text-salon-text'
+                    }`}
+                    aria-pressed={codeMode === 'auto'}
+                  >
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCodeModeChange('manual')}
+                    className={`h-full min-w-[4.5rem] rounded-md px-3 text-xs font-bold transition-colors ${
+                      codeMode === 'manual'
+                        ? 'bg-salon-primary text-white shadow-sm'
+                        : 'text-salon-muted hover:text-salon-text'
+                    }`}
+                    aria-pressed={codeMode === 'manual'}
+                  >
+                    Manual
+                  </button>
+                </div>
               </div>
+
+              <input
+                id="service-code"
+                type="text"
+                autoComplete="off"
+                required
+                value={form.code ?? ''}
+                onChange={(e) => handleCodeChange(e.target.value)}
+                readOnly={codeMode === 'auto'}
+                tabIndex={codeMode === 'auto' ? -1 : 0}
+                className={`${inputClass} ${
+                  codeMode === 'auto'
+                    ? 'cursor-not-allowed bg-salon-bg font-semibold tracking-wide text-salon-primary'
+                    : ''
+                }`}
+                placeholder={
+                  codeMode === 'auto' ? 'Generating…' : 'e.g. SRV-001 or custom'
+                }
+                aria-required="true"
+              />
+              {codeMode === 'auto' ? (
+                <p className="mt-1.5 text-xs font-medium text-salon-muted">
+                  System-generated sequential code. Switch to Manual to type a
+                  custom code.
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs font-medium text-salon-muted">
+                  Enter a unique code, or switch to Auto for{' '}
+                  <span className="font-semibold text-salon-primary">
+                    {SERVICE_CODE_PREFIX}###
+                  </span>
+                  .
+                </p>
+              )}
             </div>
 
             {/* Service Name * */}
@@ -456,7 +564,6 @@ export default function ServiceDetailsModal({
               </div>
             </div>
 
-            {/* BackOffice — same checkbox pattern as GroupDetailsModal Active ~229–239 */}
             <label className="flex h-12 cursor-pointer items-center gap-3 rounded-xl border-2 border-salon-border px-4">
               <input
                 type="checkbox"
@@ -472,7 +579,6 @@ export default function ServiceDetailsModal({
             </label>
           </div>
 
-          {/* Footer — same as ProductDetailsModal ~440–475 */}
           <footer className="flex shrink-0 flex-wrap items-center gap-3 border-t border-salon-border px-4 py-3.5 sm:px-5">
             {!isEdit && (
               <Button

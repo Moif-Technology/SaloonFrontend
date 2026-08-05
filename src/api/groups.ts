@@ -17,7 +17,7 @@ export async function createGroup(payload: GroupPayload) {
   return {
     id: `grp-${Date.now()}`,
     name: payload.name.trim(),
-    code: payload.code?.trim() || undefined,
+    code: payload.code.trim(),
     active: payload.active,
     sortOrder: payload.sortOrder,
   }
@@ -25,5 +25,10 @@ export async function createGroup(payload: GroupPayload) {
 
 export async function updateGroup(id: string, payload: GroupPayload) {
   await new Promise((r) => setTimeout(r, 400))
-  return { id, ...payload, name: payload.name.trim() }
+  return {
+    id,
+    ...payload,
+    name: payload.name.trim(),
+    code: payload.code.trim(),
+  }
 }

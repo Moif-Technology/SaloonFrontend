@@ -8,7 +8,42 @@ import type {
   CatalogueProduct,
   ProductFormValues,
 } from '../../types/product'
+/** Sequential system codes: PRD-001, PRD-002, … */
+const PRODUCT_CODE_PREFIX = 'PRD-'
+const PRODUCT_CODE_SEQ_KEY = 'salon-pos-product-code-seq'
 
+function formatProductSystemCode(seq: number): string {
+  return `${PRODUCT_CODE_PREFIX}${String(seq).padStart(3, '0')}`
+}
+
+function readProductCodeSeq(): number {
+  try {
+    const n = Number(localStorage.getItem(PRODUCT_CODE_SEQ_KEY))
+    return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1
+  } catch {
+    return 1
+  }
+}
+
+function peekNextSystemProductCode(): string {
+  return formatProductSystemCode(readProductCodeSeq())
+}
+
+function advanceProductCodeSeqAfterSave(code: string) {
+  const match = code
+    .trim()
+    .toUpperCase()
+    .match(/^PRD-(\d+)$/)
+  if (!match) return
+  const used = Number(match[1])
+  if (!Number.isFinite(used) || used < 1) return
+  try {
+    const next = Math.max(readProductCodeSeq(), used + 1)
+    localStorage.setItem(PRODUCT_CODE_SEQ_KEY, String(next))
+  } catch {
+    // ignore
+  }
+}
 export interface ProductDetailsModalProps {
   open: boolean
   onClose: () => void
@@ -47,7 +82,7 @@ export default function ProductDetailsModal({
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [loadingGroups, setLoadingGroups] = useState(false)
-
+  const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto')
   const isEdit = Boolean(initialProduct?.id)
 
   function resetForm(from?: CatalogueProduct | null) {
@@ -63,8 +98,13 @@ export default function ProductDetailsModal({
         active: from.active ?? true,
         showOnBackOffice: from.showOnBackOffice ?? true,
       })
+      setCodeMode('manual')
     } else {
-      setForm(emptyForm)
+      setForm({
+        ...emptyForm,
+        code: peekNextSystemProductCode(),
+      })
+      setCodeMode('auto')
     }
     setFieldError(null)
     setSaving(false)
@@ -114,12 +154,29 @@ export default function ProductDetailsModal({
     setForm((prev) => ({ ...prev, [key]: value }))
     setFieldError(null)
   }
+  function handleCodeChange(code: string) {
+    updateField('code', code)
+  }
+  
+  function handleCodeModeChange(mode: 'auto' | 'manual') {
+    setCodeMode(mode)
+    setFieldError(null)
+    if (mode === 'auto') {
+      updateField('code', peekNextSystemProductCode())
+    }
+  }
 
   function handleNew() {
     resetForm(null)
   }
-
   async function handleSave() {
+    const code = (form.code ?? '').trim()
+    if (!code) {
+      const message = 'Product code / barcode is required'
+      setFieldError(message)
+      onError?.(message)
+      return
+    }
     const name = form.name.trim()
     if (!name) {
       setFieldError('Product name is required')
@@ -147,7 +204,7 @@ export default function ProductDetailsModal({
     try {
       const payload = {
         name,
-        code: form.code?.trim() || undefined,
+        code,
         groupId: form.groupId,
         price,
         cost:
@@ -168,12 +225,16 @@ export default function ProductDetailsModal({
       }
 
       const result =
-        isEdit && initialProduct
-          ? await updateProduct(initialProduct.id, payload)
-          : await createProduct(payload)
+  isEdit && initialProduct
+    ? await updateProduct(initialProduct.id, payload)
+    : await createProduct(payload)
 
-      onSaved?.(result)
-      onClose()
+if (!isEdit) {
+  advanceProductCodeSeqAfterSave(code)
+}
+
+onSaved?.(result)
+onClose()
     } catch {
       const message = 'Could not save product'
       setFieldError(message)
@@ -241,26 +302,111 @@ export default function ProductDetailsModal({
 
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-           {/* Code / Barcode — first */}
+         {/* Code / Barcode */}
 <div>
-  <label htmlFor="product-code" className="text-sm font-semibold text-salon-text">
-    Product Code / Barcode{' '}
-    <span className="font-normal text-salon-muted">(optional)</span>
-  </label>
-  <div className="relative mt-1.5">
-    <input
-      id="product-code"
-      type="text"
-      autoFocus  
-      autoComplete="off"
-      value={form.code ?? ''}
-      onChange={(e) => updateField('code', e.target.value)}
-      className={`${inputClass} mt-0 pr-12`}
-      placeholder="Scan or type barcode"
-    />
-    {/* scanner icon span... */}
+  <div className="flex flex-wrap items-center justify-between gap-2">
+    <label
+      htmlFor="product-code"
+      className="text-sm font-semibold text-salon-text"
+    >
+      Product Code / Barcode <span className="text-salon-danger">*</span>
+    </label>
+
+    <div
+      className="inline-flex h-9 shrink-0 items-center rounded-lg border-2 border-salon-border bg-salon-bg p-0.5"
+      role="group"
+      aria-label="Barcode entry mode"
+    >
+      <button
+        type="button"
+        onClick={() => handleCodeModeChange('auto')}
+        className={`h-full min-w-[4.5rem] rounded-md px-3 text-xs font-bold transition-colors ${
+          codeMode === 'auto'
+            ? 'bg-salon-primary text-white shadow-sm'
+            : 'text-salon-muted hover:text-salon-text'
+        }`}
+        aria-pressed={codeMode === 'auto'}
+      >
+        Auto
+      </button>
+      <button
+        type="button"
+        onClick={() => handleCodeModeChange('manual')}
+        className={`h-full min-w-[4.5rem] rounded-md px-3 text-xs font-bold transition-colors ${
+          codeMode === 'manual'
+            ? 'bg-salon-primary text-white shadow-sm'
+            : 'text-salon-muted hover:text-salon-text'
+        }`}
+        aria-pressed={codeMode === 'manual'}
+      >
+        Manual
+      </button>
+    </div>
   </div>
+
+  <input
+    id="product-code"
+    type="text"
+    autoComplete="off"
+    autoFocus={codeMode === 'manual'}
+    required
+    value={form.code ?? ''}
+    onChange={(e) => handleCodeChange(e.target.value)}
+    readOnly={codeMode === 'auto'}
+    tabIndex={codeMode === 'auto' ? -1 : 0}
+    className={`${inputClass} ${
+      codeMode === 'auto'
+        ? 'cursor-not-allowed bg-salon-bg font-semibold tracking-wide text-salon-primary'
+        : ''
+    }`}
+    placeholder={
+      codeMode === 'auto'
+        ? 'Generating…'
+        : 'Scan barcode or type custom code'
+    }
+    aria-required="true"
+  />
+  {codeMode === 'auto' ? (
+    <p className="mt-1.5 text-xs font-medium text-salon-muted">
+      System-generated sequential code. Switch to Manual to type or scan a
+      custom barcode.
+    </p>
+  ) : (
+    <p className="mt-1.5 text-xs font-medium text-salon-muted">
+      Type or scan a unique barcode, or switch to Auto for{' '}
+      <span className="font-semibold text-salon-primary">
+        {PRODUCT_CODE_PREFIX}###
+      </span>
+      .
+    </p>
+  )}
 </div>
+
+{/* Name */}
+<div>
+  <label
+    htmlFor="product-name"
+    className="text-sm font-semibold text-salon-text"
+  >
+    Product Name / Description <span className="text-salon-danger">*</span>
+  </label>
+  <input
+    id="product-name"
+    type="text"
+    autoFocus={codeMode === 'auto'}
+    autoComplete="off"
+    value={form.name}
+    onChange={(e) => updateField('name', e.target.value)}
+    className={inputClass}
+    placeholder="e.g. Shampoo 250ml"
+  />
+  {fieldError && (
+    <p className="mt-1.5 text-sm font-medium text-salon-danger">
+      {fieldError}
+    </p>
+  )}
+</div>
+
 
 {/* Name — second */}
 <div>

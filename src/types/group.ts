@@ -1,13 +1,13 @@
 export interface GroupFormValues {
   name: string
-  code?: string
+  code: string
   active: boolean
   sortOrder?: number
 }
 
 export interface GroupPayload {
   name: string
-  code?: string
+  code: string
   active: boolean
   sortOrder?: number
 }

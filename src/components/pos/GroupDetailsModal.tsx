@@ -12,28 +12,48 @@ export interface GroupDetailsModalProps {
   onSaved?: (group: unknown) => void
   onError?: (message: string) => void
 }
-/** Auto code from group name: "Hair Care" → "HC", "Spa" → "SPA" */
-function generateGroupCode(name: string): string {
-    const words = name
-      .trim()
-      .split(/\s+/)
-      .map((w) => w.replace(/[^a-zA-Z0-9]/g, ''))
-      .filter(Boolean)
-  
-    if (words.length === 0) return ''
-  
-    // Multiple words → initials (max 6)
-    if (words.length > 1) {
-      return words
-        .map((w) => w[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 6)
-    }
-  
-    // Single word → first 3 alphanumerics
-    return words[0].toUpperCase().slice(0, 3)
+
+/** Sequential system codes: GRP-001, GRP-002, … */
+const GROUP_CODE_PREFIX = 'GRP-'
+const GROUP_CODE_SEQ_KEY = 'salon-pos-group-code-seq'
+
+function formatGroupSystemCode(seq: number): string {
+  return `${GROUP_CODE_PREFIX}${String(seq).padStart(3, '0')}`
+}
+
+function readGroupCodeSeq(): number {
+  try {
+    const n = Number(localStorage.getItem(GROUP_CODE_SEQ_KEY))
+    return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1
+  } catch {
+    return 1
   }
+}
+
+/** Next unused sequential code (does not advance the counter). */
+function peekNextSystemGroupCode(): string {
+  return formatGroupSystemCode(readGroupCodeSeq())
+}
+
+/**
+ * After a successful create, keep the sequence ahead of any GRP-### code used
+ * so the next open still gets a free number.
+ */
+function advanceGroupCodeSeqAfterSave(code: string) {
+  const match = code
+    .trim()
+    .toUpperCase()
+    .match(/^GRP-(\d+)$/)
+  if (!match) return
+  const used = Number(match[1])
+  if (!Number.isFinite(used) || used < 1) return
+  try {
+    const next = Math.max(readGroupCodeSeq(), used + 1)
+    localStorage.setItem(GROUP_CODE_SEQ_KEY, String(next))
+  } catch {
+    // ignore storage failures
+  }
+}
 
 const emptyForm: GroupFormValues = {
   name: '',
@@ -53,14 +73,14 @@ export default function GroupDetailsModal({
   onError,
 }: GroupDetailsModalProps) {
   const [form, setForm] = useState<GroupFormValues>(emptyForm)
-const [fieldError, setFieldError] = useState<string | null>(null)
-const [saving, setSaving] = useState(false)
-/** When true, name changes no longer overwrite the code */
-const [codeTouched, setCodeTouched] = useState(false)
+  const [fieldError, setFieldError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  /** Auto = system sequential code (locked); Manual = free-form entry */
+  const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto')
 
-const isEdit = Boolean(initialGroup?.id)
+  const isEdit = Boolean(initialGroup?.id)
 
-useEffect(() => {
+  useEffect(() => {
     if (!open) return
     if (initialGroup) {
       setForm({
@@ -69,12 +89,14 @@ useEffect(() => {
         active: initialGroup.active ?? true,
         sortOrder: initialGroup.sortOrder,
       })
-      // Edit mode: treat code as user-owned so name edits don't overwrite it
-      setCodeTouched(true)
+      // Edit: Manual so existing system/custom codes stay editable as-is
+      setCodeMode('manual')
     } else {
-      setForm(emptyForm)
-      // Create mode: allow auto-generation from name
-      setCodeTouched(false)
+      setForm({
+        ...emptyForm,
+        code: peekNextSystemGroupCode(),
+      })
+      setCodeMode('auto')
     }
     setFieldError(null)
     setSaving(false)
@@ -96,39 +118,45 @@ useEffect(() => {
     setForm((prev) => ({ ...prev, [key]: value }))
     setFieldError(null)
   }
-  
-  /** Name change → auto code only if user has not manually edited Code */
+
   function handleNameChange(name: string) {
-    setForm((prev) => ({
-      ...prev,
-      name,
-      code: codeTouched ? prev.code : generateGroupCode(name),
-    }))
-    setFieldError(null)
+    updateField('name', name)
   }
-  
-  /** Any direct edit to Code locks auto-generation */
+
   function handleCodeChange(code: string) {
-    setCodeTouched(true)
     updateField('code', code)
   }
-  
-  /** Optional: re-enable auto code from current name */
-  function handleRegenerateCode() {
-    setCodeTouched(false)
-    updateField('code', generateGroupCode(form.name))
+
+  function handleCodeModeChange(mode: 'auto' | 'manual') {
+    setCodeMode(mode)
+    setFieldError(null)
+    if (mode === 'auto') {
+      // System sequential code — never derived from group name
+      updateField('code', peekNextSystemGroupCode())
+    }
+    // Manual: keep current code so user can edit it
   }
 
   async function handleSave() {
+    const code = (form.code ?? '').trim()
+    if (!code) {
+      const message = 'Code is required'
+      setFieldError(message)
+      onError?.(message)
+      return
+    }
+
     const name = form.name.trim()
     if (!name) {
-      setFieldError('Group name is required')
-      onError?.('Group name is required')
+      const message = 'Group name is required'
+      setFieldError(message)
+      onError?.(message)
       return
     }
     if (name.length < 2) {
-      setFieldError('Name must be at least 2 characters')
-      onError?.('Name must be at least 2 characters')
+      const message = 'Name must be at least 2 characters'
+      setFieldError(message)
+      onError?.(message)
       return
     }
 
@@ -136,7 +164,7 @@ useEffect(() => {
     try {
       const payload = {
         name,
-        code: form.code?.trim() || undefined,
+        code,
         active: form.active,
         sortOrder:
           form.sortOrder === undefined || Number.isNaN(Number(form.sortOrder))
@@ -148,6 +176,10 @@ useEffect(() => {
         isEdit && initialGroup
           ? await updateGroup(initialGroup.id, payload)
           : await createGroup(payload)
+
+      if (!isEdit) {
+        advanceGroupCodeSeqAfterSave(code)
+      }
 
       onSaved?.(result)
       onClose()
@@ -209,62 +241,108 @@ useEffect(() => {
 
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-           {/* Code — above Group Name; auto-filled from name, still fully editable */}
-<div>
-  <div className="flex items-center justify-between gap-2">
-    <label
-      htmlFor="group-code"
-      className="text-sm font-semibold text-salon-text"
-    >
-      Code{' '}
-      <span className="font-normal text-salon-muted">
-        (optional · auto from name)
-      </span>
-    </label>
-    {!isEdit && form.name.trim() && (
-      <button
-        type="button"
-        onClick={handleRegenerateCode}
-        className="text-xs font-semibold text-salon-primary hover:underline"
-      >
-        Auto-fill
-      </button>
-    )}
-  </div>
-  <input
-    id="group-code"
-    type="text"
-    autoComplete="off"
-    value={form.code ?? ''}
-    onChange={(e) => handleCodeChange(e.target.value)}
-    className={inputClass}
-    placeholder="e.g. HC"
-  />
-</div>
+            {/* Code — above Group Name; Auto locks sequential system code */}
+            <div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label
+                  htmlFor="group-code"
+                  className="text-sm font-semibold text-salon-text"
+                >
+                  Code <span className="text-salon-danger">*</span>
+                </label>
 
-<div>
-  <label
-    htmlFor="group-name"
-    className="text-sm font-semibold text-salon-text"
-  >
-    Group Name <span className="text-salon-danger">*</span>
-  </label>
-  <input
-    id="group-name"
-    type="text"
-    autoFocus
-    autoComplete="off"
-    value={form.name}
-    onChange={(e) => handleNameChange(e.target.value)}
-    className={inputClass}
-    placeholder="e.g. Hair Care"
-  />
-  {fieldError && (
-    <p className="mt-1.5 text-sm font-medium text-salon-danger">
-      {fieldError}
-    </p>
-  )}
-</div>
+                <div
+                  className="inline-flex h-9 shrink-0 items-center rounded-lg border-2 border-salon-border bg-salon-bg p-0.5"
+                  role="group"
+                  aria-label="Code entry mode"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleCodeModeChange('auto')}
+                    className={`h-full min-w-[4.5rem] rounded-md px-3 text-xs font-bold transition-colors ${
+                      codeMode === 'auto'
+                        ? 'bg-salon-primary text-white shadow-sm'
+                        : 'text-salon-muted hover:text-salon-text'
+                    }`}
+                    aria-pressed={codeMode === 'auto'}
+                  >
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCodeModeChange('manual')}
+                    className={`h-full min-w-[4.5rem] rounded-md px-3 text-xs font-bold transition-colors ${
+                      codeMode === 'manual'
+                        ? 'bg-salon-primary text-white shadow-sm'
+                        : 'text-salon-muted hover:text-salon-text'
+                    }`}
+                    aria-pressed={codeMode === 'manual'}
+                  >
+                    Manual
+                  </button>
+                </div>
+              </div>
+
+              <input
+                id="group-code"
+                type="text"
+                autoComplete="off"
+                required
+                value={form.code ?? ''}
+                onChange={(e) => handleCodeChange(e.target.value)}
+                readOnly={codeMode === 'auto'}
+                tabIndex={codeMode === 'auto' ? -1 : 0}
+                className={`${inputClass} ${
+                  codeMode === 'auto'
+                    ? 'cursor-not-allowed bg-salon-bg font-semibold tracking-wide text-salon-primary'
+                    : ''
+                }`}
+                placeholder={
+                  codeMode === 'auto' ? 'Generating…' : 'e.g. GRP-001 or custom'
+                }
+                aria-required="true"
+              />
+              {codeMode === 'auto' ? (
+                <p className="mt-1.5 text-xs font-medium text-salon-muted">
+                  System-generated sequential code. Switch to Manual to type a
+                  custom code.
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs font-medium text-salon-muted">
+                  Enter a unique code, or switch to Auto for{' '}
+                  <span className="font-semibold text-salon-primary">
+                    {GROUP_CODE_PREFIX}###
+                  </span>
+                  .
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="group-name"
+                className="text-sm font-semibold text-salon-text"
+              >
+                Group Name <span className="text-salon-danger">*</span>
+              </label>
+              <input
+                id="group-name"
+                type="text"
+                autoFocus
+                autoComplete="off"
+                value={form.name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                className={inputClass}
+                placeholder="e.g. Hair Care"
+                aria-required="true"
+              />
+              {fieldError && (
+                <p className="mt-1.5 text-sm font-medium text-salon-danger">
+                  {fieldError}
+                </p>
+              )}
+            </div>
+
             <div>
               <label
                 htmlFor="group-sort"
