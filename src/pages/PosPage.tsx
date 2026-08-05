@@ -17,6 +17,8 @@ import HoldBillModal from '../components/pos/HoldBillModal'
 import BillNoteModal from '../components/pos/BillNoteModal'
 import CardPaymentModal from '../components/pos/CardPaymentModal'
 import QrPayModal from '../components/pos/QrPayModal'
+import QuickCashPaymentModal from '../components/pos/QuickCashPaymentModal'
+import type { CashPaymentResult } from '../types/payment'
 import { useSnackbar } from '../context/SnackbarContext'
 import CustomerEntryModal from '../components/pos/CustomerEntryModal'
 import NumericKeypadModal from '../components/common/NumericKeypadModal'
@@ -88,6 +90,7 @@ export default function PosPage() {
   const [noteModalOpen, setNoteModalOpen] = useState(false)
   const [cardModalOpen, setCardModalOpen] = useState(false)
   const [qrModalOpen, setQrModalOpen] = useState(false)
+  const [cashModalOpen, setCashModalOpen] = useState(false)
   const [billNote, setBillNote] = useState('')
   const [heldBills, setHeldBills] = useState<HeldBill[]>([])
   const [billSeq, setBillSeq] = useState(123)
@@ -176,6 +179,7 @@ export default function PosPage() {
       setAppointmentsLoading(false)
     }
   }
+
 
   useEffect(() => {
     void loadAppointments()
@@ -293,7 +297,13 @@ export default function PosPage() {
     }
     setCardModalOpen(true)
   }
-
+  function handleOpenQuickCash() {
+    if (billItems.length === 0) {
+      showSnackbar('Add items before taking cash payment', 'warning')
+      return
+    }
+    setCashModalOpen(true)
+  }
   function handleOpenQrPay() {
     if (billItems.length === 0) {
       showSnackbar('Add items before taking QR payment', 'warning')
@@ -314,16 +324,32 @@ export default function PosPage() {
     setActiveAppointmentId(null)
     setCardModalOpen(false)
     setQrModalOpen(false)
+    setCashModalOpen(false)
   }
 
   function handleCardPaymentComplete() {
     settlePaidBill('Card payment')
   }
-
   function handleQrPaymentComplete() {
     settlePaidBill('QR payment')
   }
-
+  
+  async function handleCashPaymentComplete(result: CashPaymentResult) {
+    const paid = formatCurrencyLabel(result.amountDue)
+    const change = formatCurrencyLabel(result.change)
+    showSnackbar(
+      `Cash received · ₹${paid} · Change ₹${change}`,
+      'success',
+    )
+    setBillItems([])
+    setAppliedDiscount(null)
+    setBillNote('')
+    setCustomerLabel('Walk-in')
+    setActiveAppointmentId(null)
+    setCashModalOpen(false)
+    showSnackbar('Printing Customer Receipt...', 'info')
+  }
+  
   function handleSaveBillNote(note: string) {
     setBillNote(note)
     setNoteModalOpen(false)
@@ -418,7 +444,7 @@ export default function PosPage() {
   function handlePrint(receiptType: ReceiptType) {
     const labels: Record<ReceiptType, string> = {
       customer: 'Customer Receipt',
-      kitchen: 'Kitchen/Service Ticket',
+      service: 'Service Ticket',
       gift: 'Gift Receipt',
     }
     showSnackbar(`Printing ${labels[receiptType]}...`, 'info')
@@ -538,7 +564,7 @@ export default function PosPage() {
           onHoldBill={handleOpenHoldBills}
           onBillPrint={handleOpenPrint}
           onSaveBill={() => showSnackbar('Bill saved', 'success')}
-          onQuickCash={() => showSnackbar('Quick cash settlement...', 'success')}
+          onQuickCash={handleOpenQuickCash}
           onCard={handleOpenCard}
           onQrPay={handleOpenQrPay}
           onSettlement={() => showSnackbar('Proceeding to settlement...', 'success')}
@@ -610,13 +636,20 @@ export default function PosPage() {
         amount={totals.total}
         onComplete={handleCardPaymentComplete}
       />
-      <QrPayModal
-        open={qrModalOpen}
-        onClose={() => setQrModalOpen(false)}
-        amount={totals.total}
-        billRef={nextBillNo(billSeq)}
-        onComplete={handleQrPaymentComplete}
-      />
+    <QrPayModal
+  open={qrModalOpen}
+  onClose={() => setQrModalOpen(false)}
+  amount={totals.total}
+  billRef={nextBillNo(billSeq)}
+  onComplete={handleQrPaymentComplete}
+/>
+<QuickCashPaymentModal
+  open={cashModalOpen}
+  onClose={() => setCashModalOpen(false)}
+  amount={totals.total}
+  onComplete={handleCashPaymentComplete}
+/>
+
       <NavDrawer
   open={navDrawerOpen}
   onClose={() => setNavDrawerOpen(false)}

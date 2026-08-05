@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   X,
   Receipt,
-  ChefHat,
+  ClipboardList,
   Gift,
   RotateCcw,
   Mail,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import Button from '../common/Button'
 
-export type ReceiptType = 'customer' | 'kitchen' | 'gift'
+export type ReceiptType = 'customer' | 'service' | 'gift'
 
 export interface PrintOptionsModalProps {
   open: boolean
@@ -43,10 +43,10 @@ const RECEIPT_OPTIONS: {
     icon: Receipt,
   },
   {
-    id: 'kitchen',
-    label: 'Kitchen/Service Ticket',
+    id: 'service',
+    label: 'Service Ticket',
     hint: 'Station list for stylists',
-    icon: ChefHat,
+    icon: ClipboardList,
   },
   {
     id: 'gift',
@@ -146,10 +146,11 @@ export default function PrintOptionsModal({
                     aria-checked={selected}
                     onClick={() => setReceiptType(opt.id)}
                     className={[
-                      'flex min-h-[100px] flex-col items-start gap-2 rounded-xl border-2 p-4 text-left transition-colors',
+                      'flex min-h-[100px] flex-col items-start gap-2 rounded-xl border-2 p-4 text-left',
+                      'transition-colors touch-manipulation active:scale-[0.98]',
                       selected
-                        ? 'border-salon-primary bg-salon-primary-light'
-                        : 'border-salon-border bg-white hover:border-salon-primary/40 hover:bg-salon-bg',
+                        ? 'border-salon-primary bg-salon-primary-light/80 shadow-sm'
+                        : 'border-salon-border bg-white hover:border-salon-primary/40 hover:bg-salon-primary-light/40',
                     ].join(' ')}
                   >
                     <Icon
