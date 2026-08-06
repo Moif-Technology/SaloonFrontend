@@ -27,6 +27,7 @@ import PosSetupDialog from '../components/pos/PosSetupDialog'
 import AppointmentListModal from '../components/pos/AppointmentListModal'
 import DiscountModal from '../components/pos/DiscountModal'
 import PrintOptionsModal, { type ReceiptType } from '../components/pos/PrintOptionsModal'
+import AppSettingsDialog from '../components/pos/AppSettingsDialog'
 import type { BillItem, HeldBill, Product, ServiceGroup } from '../types/pos'
 import type { PaymentMethodLabel, SettleOrderData } from '../types/settlement'
 import type { Appointment } from '../types/appointment'
@@ -157,6 +158,7 @@ export default function PosPage() {
   const [printModalOpen, setPrintModalOpen] = useState(false)
   const [holdModalOpen, setHoldModalOpen] = useState(false)
   const [noteModalOpen, setNoteModalOpen] = useState(false)
+  const [appSettingsOpen, setAppSettingsOpen] = useState(false)
   const [billNote, setBillNote] = useState('')
   const [heldBills, setHeldBills] = useState<HeldBill[]>([])
   const [billSeq, setBillSeq] = useState(123)
@@ -894,10 +896,6 @@ export default function PosPage() {
     showSnackbar('Discount removed', 'info')
   }
 
-  function handleOpenPrint() {
-    setPrintModalOpen(true)
-  }
-
   function handlePrint(receiptType: ReceiptType) {
     setPrintModalOpen(false)
     if (receiptType === 'customer') {
@@ -1006,7 +1004,7 @@ export default function PosPage() {
           onMenu={handleOpenMenu}
           onCustomer={handleOpenCustomer}
           onAppointment={handleOpenAppointments}
-          onMore={() => showSnackbar('More options coming soon', 'info')}
+          onMore={() => setAppSettingsOpen(true)}
         />
       </header>
 
@@ -1066,7 +1064,6 @@ export default function PosPage() {
           onCustomer={handleOpenCustomer}
           onAppointment={handleOpenAppointments}
           onHoldBill={handleOpenHoldBills}
-          onBillPrint={handleOpenPrint}
           onSaveBill={() => void handleSaveBill()}
           onQuickCash={handleOpenQuickCash}
           onCard={handleOpenCard}
@@ -1266,6 +1263,10 @@ export default function PosPage() {
         onClose={() => setNoteModalOpen(false)}
         currentNote={billNote}
         onSave={handleSaveBillNote}
+      />
+      <AppSettingsDialog
+        open={appSettingsOpen}
+        onClose={() => setAppSettingsOpen(false)}
       />
       {qtyEdit && (
         <NumericKeypadModal

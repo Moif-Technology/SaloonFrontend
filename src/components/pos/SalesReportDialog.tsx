@@ -186,7 +186,7 @@ export default function SalesReportDialog({ open, kind, onClose }: SalesReportDi
 
   const totals = useMemo(() => {
     return rows.reduce(
-      (acc, r) => {
+      (acc: any, r: any) => {
         acc.bills += num(r.billCount)
         acc.qty += num(r.qty)
         acc.subtotal += num(r.subtotal)
@@ -210,7 +210,7 @@ export default function SalesReportDialog({ open, kind, onClose }: SalesReportDi
         cash: 0,
         card: 0,
         credit: 0,
-      },
+      } as any,
     )
   }, [rows])
 
@@ -513,13 +513,13 @@ export default function SalesReportDialog({ open, kind, onClose }: SalesReportDi
           <div className="flex flex-wrap gap-4">
             <span>
               Discount{' '}
-              <strong className="tabular-nums">{fmtMoney(totals.discount)}</strong>
+              <strong className="tabular-nums">{fmtMoney((totals as any).discount)}</strong>
             </span>
             <span>
-              Tax <strong className="tabular-nums">{fmtMoney(totals.tax)}</strong>
+              Tax <strong className="tabular-nums">{fmtMoney((totals as any).tax)}</strong>
             </span>
             <span style={{ color: ACCENT }}>
-              Net Total <strong className="tabular-nums">{fmtMoney(totals.net)}</strong>
+              Net Total <strong className="tabular-nums">{fmtMoney((totals as any).net)}</strong>
             </span>
           </div>
         </footer>

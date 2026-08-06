@@ -21,7 +21,7 @@ interface BottomActionBarProps {
   onAppointment: () => void
   onCustomer: () => void
   onDiscount: () => void
-  onBillPrint: () => void
+  // onBillPrint removed — auto-prints on Sunmi device
   /** Opens Job List (saved jobs) — occupies Hold Bill slot */
   onJobList: () => void
   onNote: () => void
@@ -91,7 +91,6 @@ export default function BottomActionBar({
   onAppointment,
   onCustomer,
   onDiscount,
-  onBillPrint,
   onJobList,
   onNote,
   onQuickCash,
@@ -199,9 +198,10 @@ export default function BottomActionBar({
         <ArrowRight size={26} />
       </Button>
 
-      <Button size="secondary" icon={<Printer size={20} />} onClick={onBillPrint}>
+      {/* Print button — now auto-prints on Sunmi device via printReceiptOnSunmi() */}
+      {/* <Button size="secondary" icon={<Printer size={20} />} onClick={onBillPrint}>
         {label('Print')}
-      </Button>
+      </Button> */}
       <Button size="secondary" icon={<ClipboardList size={20} />} onClick={onJobList}>
         {label('Job List')}
       </Button>

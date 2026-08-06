@@ -454,7 +454,20 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
 export async function printBillFromData(bill: ReceiptBill, meta: PrintMeta = {}) {
   if (!bill) throw new Error('No bill data to print')
   const html = buildBillReceiptHtml(bill, meta)
-  openReceiptPrintWindow(html)
+
+  // Try Android Sunmi printer first
+  try {
+    const { IS_ANDROID_POS, printHtmlOnAndroid } = await import('./androidPrinter')
+    if (IS_ANDROID_POS) {
+      const printed = await printHtmlOnAndroid(html)
+      if (printed) return
+    }
+  } catch (err) {
+    console.warn('Android printer not available:', err)
+  }
+
+  // Browser fallback
+  await openReceiptPrintWindow(html, { useSunmi: false })
 }
 
 /** Build receipt bill from open job (GET /job/:id) for draft print. */

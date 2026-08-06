@@ -401,8 +401,25 @@ export function buildReceiptDocumentHtml(p: {
 </html>`
 }
 
-export function openReceiptPrintWindow(html: string, opts: { width?: number; height?: number } = {}) {
-  const { width = 420, height = 720 } = opts
+export async function openReceiptPrintWindow(
+  html: string,
+  opts: { width?: number; height?: number; useSunmi?: boolean } = {},
+) {
+  const { width = 420, height = 720, useSunmi = false } = opts
+
+  // Try Sunmi printer first if available
+  if (useSunmi) {
+    try {
+      const { printReceiptOnSunmi } = await import('./sunmiPrinter')
+      await printReceiptOnSunmi(html)
+      return null
+    } catch (err) {
+      console.warn('Sunmi print failed, falling back to browser print:', err)
+      // Fall through to browser print
+    }
+  }
+
+  // Browser print fallback
   const win = window.open('', '_blank', `width=${width},height=${height}`)
   if (!win) throw new Error('Pop-up blocked — allow pop-ups to print receipts')
   win.document.write(html)
