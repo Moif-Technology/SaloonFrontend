@@ -25,6 +25,7 @@ import {
   buildReceiptBiLabel,
 } from './receiptPrintTheme'
 import { getPosSession } from '../utils/posSession'
+import { withReceiptPrintMeta } from '../utils/receiptSettings'
 import {
   isSplitBill,
   normalizeBillPaymentMode,
@@ -91,6 +92,8 @@ export interface PrintMeta {
   phone?: string
   address?: string
   trn?: string
+  footer?: string
+  footer2?: string
   counterNo?: string | number
   /** Draft copy for customer (not a tax invoice) */
   draft?: boolean
@@ -234,8 +237,9 @@ export function billFromSettleResult(
 export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
   const co = resolveCompanyHeader(bill, meta)
   const isDraft = !!meta.draft
-  const invoiceTitle = isDraft ? 'Draft Copy' : 'Tax Invoice'
-  const invoiceTitleAr = isDraft ? 'مسودة' : 'فاتورة ضريبية'
+  const hasTrn = Boolean(String(co.trn ?? '').trim())
+  const invoiceTitle = isDraft ? 'Draft Copy' : hasTrn ? 'Tax Invoice' : 'Invoice'
+  const invoiceTitleAr = isDraft ? 'مسودة' : hasTrn ? 'فاتورة ضريبية' : 'فاتورة'
   const docLabel = isDraft ? 'JOB #' : 'BILL #'
 
   const billNoLabel = String(bill.billNo ?? bill.salesId ?? '')
@@ -269,6 +273,9 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
       const vatAmt = Number(it.vatAmt) || 0
       const code = it.productCode || (it.productId ? String(it.productId) : '')
       const isLast = idx === items.length - 1
+      const vatLine = hasTrn
+        ? `<td colspan="2" class="r sub">VAT@${vatPer}% (${fmtMoney(vatAmt)})</td>`
+        : `<td colspan="2" class="r sub"></td>`
       return `
       <tr class="item-main">
         <td class="desc">${buildReceiptItemDescHtml(it, esc)}</td>
@@ -278,7 +285,7 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
       </tr>
       <tr class="item-sub${isLast ? ' item-sub-last' : ''}">
         <td colspan="2" class="sub">${esc(code)}</td>
-        <td colspan="2" class="r sub">VAT@${vatPer}% (${fmtMoney(vatAmt)})</td>
+        ${vatLine}
       </tr>
     `
     })
@@ -333,6 +340,17 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
   }
 
   const phoneLine = co.phone ? `<div class="meta-line">Ph: ${esc(co.phone)}</div>` : ''
+  const addressLines = String(co.address || '')
+    .split(/\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+  const addressHtml = addressLines
+    .map((line) => `<div class="meta-line">${esc(line)}</div>`)
+    .join('')
+  const footerMain =
+    meta.footer?.trim() ||
+    (isDraft ? 'Draft Copy — Not a Tax Invoice' : 'Thank You......Visit Again')
+  const footerExtra = !isDraft && meta.footer2?.trim() ? meta.footer2.trim() : ''
   const draftBanner = isDraft
     ? `<div class="draft-banner">*** DRAFT — FOR CUSTOMER REFERENCE ***<div class="draft-banner-ar">مسودة — ليست فاتورة ضريبية</div></div>`
     : ''
@@ -341,7 +359,7 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
   <div class="store-name">${esc(co.name)}</div>
   ${co.branch ? `<div class="meta-line">${esc(co.branch)}</div>` : ''}
   ${phoneLine}
-  ${co.address ? `<div class="meta-line">${esc(co.address)}</div>` : ''}
+  ${addressHtml}
   ${co.trn ? `<div class="meta-line">TRN: ${esc(co.trn)}</div>` : ''}
 
   <hr class="dash" />
@@ -374,15 +392,19 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
   </table>
 
   <hr class="dash" />
-  ${buildReceiptDiscountAdjustmentHtml({ taxableAmt, discountAmt, roundOff, fmtMoney })}
+  ${buildReceiptDiscountAdjustmentHtml({ taxableAmt, discountAmt, roundOff, fmtMoney, showTaxLabels: hasTrn })}
   ${buildReceiptTotalLineHtml(billAmount, fmtMoney)}
   ${buildReceiptSettlementLineHtml(settlement, esc)}
   ${splitBlock}
   ${buildReceiptBillSummaryHtml({ itemCount, qtyTotal, billAmount, paidAmount, balAmount, fmtMoney, fmtQty })}
   ${creditBlock}
 
-  <hr class="dash" />
-  ${buildReceiptTaxDetailsHtml(taxableAmt, taxAmt, billAmount, fmtMoney)}
+  ${
+    hasTrn
+      ? `<hr class="dash" />
+  ${buildReceiptTaxDetailsHtml(taxableAmt, taxAmt, billAmount, fmtMoney)}`
+      : ''
+  }
 
   ${
     !isDraft
@@ -398,9 +420,8 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
   }
 
   <hr class="dash" />
-  <div class="footer">${
-    isDraft ? 'Draft Copy — Not a Tax Invoice' : 'Thank You......Visit Again'
-  }</div>
+  <div class="footer">${esc(footerMain)}</div>
+  ${footerExtra ? `<div class="footer">${esc(footerExtra)}</div>` : ''}
   `
 
   const draftCss = isDraft
@@ -534,19 +555,21 @@ export async function printJobDraft(
   const session = getPosSession()
   const details = await apiService.fetchKotDetails(String(jobId))
   const bill = billFromJobDetails(details, listRow)
-  await printBillFromData(bill, {
-    companyName: 'MOIF TECHNOLOGY',
-    counterNo: session.counterNo,
-    ...meta,
-    draft: true,
-  })
+  await printBillFromData(
+    bill,
+    await withReceiptPrintMeta({
+      counterNo: session.counterNo,
+      ...meta,
+      draft: true,
+    }),
+  )
   return bill
 }
 
 export async function printBillReceipt(salesId: string | number, meta: PrintMeta = {}) {
   const raw = await apiService.fetchSalesViewerBill(String(salesId))
   const bill = mapSalonViewerBill(raw)
-  await printBillFromData(bill, meta)
+  await printBillFromData(bill, await withReceiptPrintMeta(meta))
   return bill
 }
 
@@ -558,11 +581,10 @@ export async function printSettlementBill(opts: {
   meta?: PrintMeta
 }) {
   const session = getPosSession()
-  const meta: PrintMeta = {
-    companyName: 'MOIF TECHNOLOGY',
+  const meta: PrintMeta = await withReceiptPrintMeta({
     counterNo: session.counterNo,
     ...opts.meta,
-  }
+  })
 
   try {
     if (opts.salesId) {

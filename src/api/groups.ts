@@ -1,34 +1,59 @@
 import type { GroupPayload, CatalogueGroup } from '../types/group'
-import { serviceGroups } from '../data/mockCatalogue'
+import { apiService } from './apiService'
+
+function toCatalogue(raw: Record<string, unknown>, fallback?: Partial<GroupPayload>): CatalogueGroup {
+  const status = String(raw.rStatus ?? raw.RStatus ?? 'ACTIVE').toUpperCase()
+  return {
+    id: String(raw.groupId ?? raw.GroupID ?? ''),
+    name: String(
+      raw.groupDescription ?? raw.GroupDescription ?? fallback?.name ?? '',
+    ).trim(),
+    code: String(raw.groupCode ?? raw.GroupCode ?? fallback?.code ?? '') || undefined,
+    active: status === 'ACTIVE' || status === '',
+    sortOrder: fallback?.sortOrder,
+  }
+}
 
 export async function fetchGroups(): Promise<CatalogueGroup[]> {
-  // Mock until GET /api/groups is ready
-  await new Promise((r) => setTimeout(r, 200))
-  return serviceGroups.map((g, index) => ({
-    id: g.id,
-    name: g.name,
-    active: true,
-    sortOrder: index,
-  }))
+  const rows = await apiService.fetchGroups()
+  return rows
+    .map((g) => toCatalogue(g))
+    .filter((g) => g.id && g.id !== '0')
 }
 
-export async function createGroup(payload: GroupPayload) {
-  await new Promise((r) => setTimeout(r, 400))
-  return {
-    id: `grp-${Date.now()}`,
-    name: payload.name.trim(),
-    code: payload.code.trim(),
-    active: payload.active,
-    sortOrder: payload.sortOrder,
+export async function createGroup(payload: GroupPayload): Promise<CatalogueGroup> {
+  const raw = await apiService.createGroup({
+    groupCode: payload.code?.trim() || undefined,
+    groupDescription: payload.name.trim(),
+    // empty → API auto-codes when omitted; send code when provided
+  })
+  const created = toCatalogue(raw, payload)
+  if (!payload.active && created.id) {
+    await apiService.deleteGroup(created.id)
+    return { ...created, active: false }
   }
+  return { ...created, active: true }
 }
 
-export async function updateGroup(id: string, payload: GroupPayload) {
-  await new Promise((r) => setTimeout(r, 400))
-  return {
-    id,
-    ...payload,
-    name: payload.name.trim(),
-    code: payload.code.trim(),
+export async function updateGroup(
+  id: string,
+  payload: GroupPayload,
+): Promise<CatalogueGroup> {
+  if (!payload.active) {
+    // Soft-delete hides group from POS / list (r_status DELETED)
+    await apiService.deleteGroup(id)
+    return {
+      id,
+      name: payload.name.trim(),
+      code: payload.code.trim(),
+      active: false,
+      sortOrder: payload.sortOrder,
+    }
   }
+
+  const raw = await apiService.updateGroup(id, {
+    groupCode: payload.code.trim(),
+    groupDescription: payload.name.trim(),
+  })
+  return { ...toCatalogue(raw, payload), active: true }
 }

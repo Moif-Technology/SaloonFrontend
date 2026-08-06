@@ -10,7 +10,6 @@ import {
   MessageSquare,
   Banknote,
   CreditCard,
-  QrCode,
   MoreHorizontal,
   ClipboardList,
 } from 'lucide-react'
@@ -28,7 +27,10 @@ interface BottomActionBarProps {
   onNote: () => void
   onQuickCash: () => void
   onCard: () => void
-  onQrPay: () => void
+  /** Optional — QR Pay is hidden for now */
+  onQrPay?: () => void
+  /** Print last settled invoice for this counter */
+  onBillPrintLast?: () => void
   /** Optional: park current bill locally */
   onHoldBill?: () => void
   settlementDisabled?: boolean
@@ -94,7 +96,7 @@ export default function BottomActionBar({
   onNote,
   onQuickCash,
   onCard,
-  onQrPay,
+  onBillPrintLast,
   onHoldBill,
   settlementDisabled,
 }: BottomActionBarProps) {
@@ -133,13 +135,16 @@ export default function BottomActionBar({
       icon: <CreditCard size={20} strokeWidth={2.25} />,
       onSelect: onCard,
     },
-    {
-      id: 'qr-pay',
-      label: 'QR Pay',
-      icon: <QrCode size={20} strokeWidth={2.25} />,
-      accent: 'success',
-      onSelect: onQrPay,
-    },
+    ...(onBillPrintLast
+      ? [
+          {
+            id: 'bill-print',
+            label: 'Bill Print',
+            icon: <Printer size={20} strokeWidth={2.25} />,
+            onSelect: onBillPrintLast,
+          } satisfies MoreMenuItem,
+        ]
+      : []),
   ]
 
   useEffect(() => {

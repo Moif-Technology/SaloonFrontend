@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import PosHeader from '../components/pos/PosHeader'
 import StatusStrip from '../components/pos/StatusStrip'
 import BillPanel from '../components/pos/BillPanel'
@@ -12,38 +12,49 @@ import GroupDetailsModal from '../components/pos/GroupDetailsModal'
 import SubGroupDetailsModal from '../components/pos/SubGroupDetailsModal'
 import ProductDetailsModal from '../components/pos/ProductDetailsModal'
 import ServiceDetailsModal from '../components/pos/ServiceDetailsModal'
-import QuickCashPaymentModal from '../components/pos/QuickCashPaymentModal'
 import SalesViewerDialog from '../components/pos/SalesViewerDialog'
+import SalesReportDialog, { type SalesReportKind } from '../components/pos/SalesReportDialog'
 import HoldBillModal from '../components/pos/HoldBillModal'
 import BillNoteModal from '../components/pos/BillNoteModal'
-import CardPaymentModal from '../components/pos/CardPaymentModal'
-import QrPayModal from '../components/pos/QrPayModal'
-import CustomerEntryModal from '../components/pos/CustomerEntryModal'
+import CustomerSelectDialog, {
+  type SelectedPosCustomer,
+} from '../components/pos/CustomerSelectDialog'
 import NumericKeypadModal from '../components/common/NumericKeypadModal'
+import CustomerListDialog from '../components/pos/CustomerListDialog'
+import ProductListDialog from '../components/pos/ProductListDialog'
+import GroupListDialog from '../components/pos/GroupListDialog'
+import PosSetupDialog from '../components/pos/PosSetupDialog'
 import AppointmentListModal from '../components/pos/AppointmentListModal'
 import DiscountModal from '../components/pos/DiscountModal'
 import PrintOptionsModal, { type ReceiptType } from '../components/pos/PrintOptionsModal'
-import { serviceGroups, products as allProducts } from '../data/mockCatalogue'
 import type { BillItem, HeldBill, Product, ServiceGroup } from '../types/pos'
 import type { PaymentMethodLabel, SettleOrderData } from '../types/settlement'
 import type { Appointment } from '../types/appointment'
-import type { CashPaymentResult } from '../types/payment'
 import type { NavMenuItem } from '../data/navMenu'
 import {
   type AppliedDiscount,
   computeDiscountAmount,
 } from '../types/discount'
 import { useSnackbar } from '../context/SnackbarContext'
+import { useReturnToPinLogin } from '../components/SessionGate'
+import { useIdleLogoutWhenEmpty } from '../hooks/useIdleLogoutWhenEmpty'
 import { apiService } from '../api/apiService'
 import { SessionManager } from '../utils/sessionManager'
 import { buildJobSavePayload, buildOrderData } from '../utils/buildOrderData'
 import { getPosSession } from '../utils/posSession'
+import { isPosAdmin } from '../utils/posAdmin'
+import { mapGroupRow, mapProductRow } from '../utils/catalogueMapper'
+import {
+  loadLastSettledBill,
+  saveLastSettledBill,
+} from '../utils/lastSettledBill'
 import { computeBillTotals } from '../lib/discountCalc'
 import {
   billFromSettleResult,
   printBillFromData,
   printSettlementBill,
 } from '../lib/printBillReceipt'
+import { withReceiptPrintMeta } from '../utils/receiptSettings'
 import { applyNumericKey } from '../utils/numericInput'
 import {
   fetchAppointments,
@@ -92,8 +103,17 @@ function deriveStylistName(items: BillItem[]): string {
 
 export default function PosPage() {
   const { showSnackbar } = useSnackbar()
+  const returnToPinLogin = useReturnToPinLogin()
   const [now, setNow] = useState(new Date())
   const [billItems, setBillItems] = useState<BillItem[]>([])
+
+  // Lock to PIN after 1 min idle when the bill grid is empty
+  useIdleLogoutWhenEmpty({
+    enabled: billItems.length === 0,
+    idleMs: 60_000,
+    onIdle: returnToPinLogin,
+  })
+
   const [activeGroup, setActiveGroup] = useState<ServiceGroup | null>(null)
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null)
   const [jobId, setJobId] = useState(0)
@@ -111,25 +131,37 @@ export default function PosPage() {
   const [subGroupEntryOpen, setSubGroupEntryOpen] = useState(false)
   const [productEntryOpen, setProductEntryOpen] = useState(false)
   const [serviceEntryOpen, setServiceEntryOpen] = useState(false)
-  const [cashModalOpen, setCashModalOpen] = useState(false)
+  const [productEditInitial, setProductEditInitial] = useState<import('../types/product').CatalogueProduct | null>(null)
+  const [customerListOpen, setCustomerListOpen] = useState(false)
+  const [productListOpen, setProductListOpen] = useState(false)
+  const [groupListOpen, setGroupListOpen] = useState(false)
+  const [posSetupOpen, setPosSetupOpen] = useState(false)
   const [salesViewerOpen, setSalesViewerOpen] = useState(false)
+  const [salesReportKind, setSalesReportKind] = useState<SalesReportKind | null>(null)
   const [lastSettled, setLastSettled] = useState<{
     salesId: string | number
     orderData: SettleOrderData
     settleResult: Record<string, unknown>
-  } | null>(null)
+  } | null>(() => {
+    const saved = loadLastSettledBill()
+    if (!saved) return null
+    return {
+      salesId: saved.salesId,
+      orderData: saved.orderData,
+      settleResult: saved.settleResult,
+    }
+  })
 
   const [discountModalOpen, setDiscountModalOpen] = useState(false)
-  const [customerModalOpen, setCustomerModalOpen] = useState(false)
+  const [customerSelectOpen, setCustomerSelectOpen] = useState(false)
   const [printModalOpen, setPrintModalOpen] = useState(false)
   const [holdModalOpen, setHoldModalOpen] = useState(false)
   const [noteModalOpen, setNoteModalOpen] = useState(false)
-  const [cardModalOpen, setCardModalOpen] = useState(false)
-  const [qrModalOpen, setQrModalOpen] = useState(false)
   const [billNote, setBillNote] = useState('')
   const [heldBills, setHeldBills] = useState<HeldBill[]>([])
   const [billSeq, setBillSeq] = useState(123)
   const [customerLabel, setCustomerLabel] = useState('Walk-in')
+  const [customerId, setCustomerId] = useState(0)
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [appointmentsLoading, setAppointmentsLoading] = useState(false)
@@ -140,8 +172,18 @@ export default function PosPage() {
     draft: string
     error: string | null
   } | null>(null)
+  const [priceEdit, setPriceEdit] = useState<{
+    product: Product
+    draft: string
+    error: string | null
+  } | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const selectionMode = selectedIds.size > 0
+
+  const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
+  const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [catalogueLoading, setCatalogueLoading] = useState(true)
+  const [catalogueError, setCatalogueError] = useState<string | null>(null)
 
   const discountAmount = useMemo(
     () =>
@@ -187,8 +229,24 @@ export default function PosPage() {
   function handleNavSelect(item: NavMenuItem) {
     setNavDrawerOpen(false)
 
+    if (item.id === 'logout' || item.id === 'lock-screen') {
+      returnToPinLogin()
+      return
+    }
     if (item.action === 'group-entry') {
       setGroupEntryOpen(true)
+      return
+    }
+    if (item.action === 'group-list' || item.id === 'group-list') {
+      setGroupListOpen(true)
+      return
+    }
+    if (item.action === 'pos-setup' || item.id === 'pos-setup') {
+      if (!isPosAdmin()) {
+        showSnackbar('Only admin can open POS Setup', 'warning')
+        return
+      }
+      setPosSetupOpen(true)
       return
     }
     if (item.action === 'sub-group-entry') {
@@ -196,6 +254,7 @@ export default function PosPage() {
       return
     }
     if (item.action === 'product-entry') {
+      setProductEditInitial(null)
       setProductEntryOpen(true)
       return
     }
@@ -203,8 +262,28 @@ export default function PosPage() {
       setServiceEntryOpen(true)
       return
     }
+    if (item.action === 'customer-list' || item.id === 'customer-list') {
+      setCustomerListOpen(true)
+      return
+    }
+    if (item.action === 'product-list' || item.id === 'product-list') {
+      setProductListOpen(true)
+      return
+    }
     if (item.action === 'sales-viewer' || item.id === 'sales-viewer') {
       setSalesViewerOpen(true)
+      return
+    }
+    if (item.action === 'salesman-wise-report' || item.id === 'salesman-wise-report') {
+      setSalesReportKind('salesman')
+      return
+    }
+    if (item.action === 'item-wise-report' || item.id === 'item-wise-report') {
+      setSalesReportKind('item')
+      return
+    }
+    if (item.action === 'group-wise-report' || item.id === 'group-wise-report') {
+      setSalesReportKind('group')
       return
     }
 
@@ -216,12 +295,7 @@ export default function PosPage() {
       showSnackbar('Add items before quick cash', 'warning')
       return
     }
-    setCashModalOpen(true)
-  }
-
-  async function handleCashPaymentComplete(_result: CashPaymentResult) {
-    setCashModalOpen(false)
-    await directSettle('Cash')
+    void directSettle('Cash')
   }
 
   function handleEditQty(id: string) {
@@ -247,6 +321,39 @@ export default function PosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, [])
 
+  const loadCatalogue = useCallback(async () => {
+    setCatalogueLoading(true)
+    setCatalogueError(null)
+    try {
+      const [groupRows, productRows] = await Promise.all([
+        apiService.fetchGroups(),
+        apiService.fetchProducts({ limit: 2000 }),
+      ])
+
+      const groups = groupRows
+        .map((row, i) => mapGroupRow(row, i))
+        .filter((g) => g.id && g.id !== '0')
+
+      const products = productRows
+        .map((row, i) => mapProductRow(row, i))
+        .filter((p): p is Product => p != null)
+
+      setServiceGroups(groups)
+      setAllProducts(products)
+      setActiveGroup(null)
+    } catch (e) {
+      setCatalogueError(e instanceof Error ? e.message : 'Failed to load catalogue')
+      setServiceGroups([])
+      setAllProducts([])
+    } finally {
+      setCatalogueLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadCatalogue()
+  }, [loadCatalogue])
+
   useEffect(() => {
     if (appointmentModalOpen) void loadAppointments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,7 +366,7 @@ export default function PosPage() {
 
   const groupProducts = useMemo(
     () => (activeGroup ? allProducts.filter((p) => p.groupId === activeGroup.id) : []),
-    [activeGroup],
+    [activeGroup, allProducts],
   )
 
   const totals = useMemo(() => {
@@ -288,13 +395,20 @@ export default function PosPage() {
     return ids
   }, [billItems, appointments])
 
-  function handleSelectProduct(product: Product) {
+  function addProductToBill(product: Product, unitPrice: number, opts?: { forceNewLine?: boolean }) {
     if (billItems.length === 0) setBillStartedAt(new Date())
     setBillItems((prev) => {
-      const existing = prev.find((item) => item.productId === product.id)
-      if (existing) {
-        const updated = { ...existing, qty: existing.qty + 1 }
-        return [updated, ...prev.filter((item) => item.productId !== product.id)]
+      // Open-price (catalogue price 0): always a new line — never bump qty.
+      if (!opts?.forceNewLine) {
+        const existing = prev.find((item) => item.productId === product.id)
+        if (existing) {
+          const updated = {
+            ...existing,
+            qty: existing.qty + 1,
+            price: existing.price > 0 ? existing.price : unitPrice,
+          }
+          return [updated, ...prev.filter((item) => item.productId !== product.id)]
+        }
       }
       return [
         {
@@ -302,15 +416,42 @@ export default function PosPage() {
           productId: product.id,
           name: product.name,
           qty: 1,
-          price: product.price,
+          price: unitPrice,
           groupId: Number(product.groupId) || 0,
-          taxRate: product.taxRate ?? 5,
+          taxRate: product.taxRate ?? 0,
           lineType: product.lineType,
           stylistId: getPosSession().staffId || undefined,
         },
         ...prev,
       ]
     })
+  }
+
+  function handleSelectProduct(product: Product) {
+    // Zero-price catalogue items: always ask for price (never auto-increment qty).
+    if (!(Number(product.price) > 0)) {
+      setPriceEdit({ product, draft: '', error: null })
+      return
+    }
+    addProductToBill(product, product.price)
+  }
+
+  function applyPriceEdit() {
+    if (!priceEdit) return
+    const n = Number(priceEdit.draft)
+    if (!Number.isFinite(n) || n <= 0) {
+      const message = 'Enter a price greater than 0'
+      showSnackbar(message, 'error')
+      setPriceEdit((p) => (p ? { ...p, error: message } : p))
+      return
+    }
+    const product = priceEdit.product
+    setPriceEdit(null)
+    addProductToBill(product, n, { forceNewLine: true })
+  }
+
+  function cancelPriceEdit() {
+    setPriceEdit(null)
   }
 
   function handleIncrement(id: string) {
@@ -346,6 +487,7 @@ export default function PosPage() {
     setOrderData(null)
     setBillNote('')
     setCustomerLabel('Walk-in')
+    setCustomerId(0)
     setActiveAppointmentId(null)
     setSelectedIds(new Set())
   }
@@ -389,7 +531,7 @@ export default function PosPage() {
       throw new Error('Not logged in. Complete PIN login first so a POS token is stored.')
     }
 
-    const payload = buildJobSavePayload(items)
+    const payload = buildJobSavePayload(items, { customerId })
     const result = await apiService.saveKot(payload)
     const newId = Number(
       result.CurrentKOTID ?? result.currentJobId ?? result.jobId ?? 0,
@@ -434,6 +576,7 @@ export default function PosPage() {
         jobId: saved.jobId,
         jobNo: saved.jobNo,
         discountAmount,
+        customerId,
         customerName: customerLabel || 'Walk-in',
       })
       setOrderData(data)
@@ -446,8 +589,27 @@ export default function PosPage() {
     }
   }
 
-  /** Quick Cash / Card / Online / QR — settle via Sonu API. */
-  async function directSettle(method: 'Cash' | 'Card' | 'Online') {
+  function rememberSettled(opts: {
+    salesId: string | number
+    billNo?: string | number
+    orderData: SettleOrderData
+    settleResult: Record<string, unknown>
+  }) {
+    setLastSettled({
+      salesId: opts.salesId,
+      orderData: opts.orderData,
+      settleResult: opts.settleResult,
+    })
+    saveLastSettledBill({
+      salesId: opts.salesId,
+      billNo: opts.billNo,
+      orderData: opts.orderData,
+      settleResult: opts.settleResult,
+    })
+  }
+
+  /** Quick Cash / Card — settle CASH or CREDITCARD directly (no settlement screen, no print). */
+  async function directSettle(method: 'Cash' | 'Card') {
     if (billItems.length === 0 || settleBusy) return
     setSettleBusy(true)
     try {
@@ -457,40 +619,36 @@ export default function PosPage() {
         jobId: saved.jobId,
         jobNo: saved.jobNo,
         discountAmount,
+        customerId,
         customerName: customerLabel || 'Walk-in',
       })
 
-      const paymentMode =
-        method === 'Card' ? 'CREDITCARD' : method === 'Online' ? 'ONLINE' : 'CASH'
+      const paymentMode = method === 'Card' ? 'CREDITCARD' : 'CASH'
 
       const payload: SettleOrderData = {
         ...data,
         paymentMode,
         paidAmount: data.netAmount,
       }
-      if (paymentMode === 'ONLINE') {
-        payload.onlineSource = 'ONLINE'
-        payload.paymentRefNo = 'ONLINE'
-      }
 
       const result = await apiService.saveSettlement(
         payload as unknown as Record<string, unknown>,
       )
 
-      setLastSettled({
+      rememberSettled({
         salesId: String(result.salesId ?? ''),
+        billNo: result.billNo != null ? String(result.billNo) : undefined,
         orderData: payload,
         settleResult: result as unknown as Record<string, unknown>,
       })
 
       resetBillState()
-      setCardModalOpen(false)
-      setQrModalOpen(false)
 
       showSnackbar(
         `Bill #${result.billNo} settled (${paymentMode})`,
         'success',
       )
+      returnToPinLogin()
     } catch (e) {
       showSnackbar(e instanceof Error ? e.message : 'Direct settlement failed', 'error')
     } finally {
@@ -507,6 +665,7 @@ export default function PosPage() {
         `Job saved${saved.jobNo ? ` #${saved.jobNo}` : ''} — open Job List to recall`,
         'success',
       )
+      returnToPinLogin()
     } catch (e) {
       showSnackbar(e instanceof Error ? e.message : 'Save bill failed', 'error')
     }
@@ -519,6 +678,8 @@ export default function PosPage() {
     setBillStartedAt(loaded.startedAt ?? new Date())
     setAppliedDiscount(null)
     setOrderData(null)
+    setCustomerLabel(loaded.customerName || 'Walk-in')
+    setCustomerId(Number(loaded.customerId) || 0)
     showSnackbar(
       `Loaded job${loaded.jobNo ? ` #${loaded.jobNo}` : ''} — ready to settle / print`,
       'success',
@@ -526,10 +687,9 @@ export default function PosPage() {
   }
 
   async function handleBillPrint() {
-    const meta = {
+    const meta = await withReceiptPrintMeta({
       counterNo: getPosSession().counterNo,
-      companyName: 'MOIF TECHNOLOGY',
-    }
+    })
 
     try {
       if (billItems.length > 0) {
@@ -540,6 +700,7 @@ export default function PosPage() {
             jobId,
             jobNo,
             discountAmount,
+            customerId,
             customerName: customerLabel || 'Walk-in',
           })
         const bill = billFromSettleResult(data, {
@@ -592,23 +753,60 @@ export default function PosPage() {
       showSnackbar('Add items before taking card payment', 'warning')
       return
     }
-    setCardModalOpen(true)
-  }
-
-  function handleOpenQrPay() {
-    if (billItems.length === 0) {
-      showSnackbar('Add items before taking QR payment', 'warning')
-      return
-    }
-    setQrModalOpen(true)
-  }
-
-  function handleCardPaymentComplete() {
     void directSettle('Card')
   }
 
-  function handleQrPaymentComplete() {
-    void directSettle('Online')
+  async function handleBillPrintLast() {
+    const meta = await withReceiptPrintMeta({
+      counterNo: getPosSession().counterNo,
+    })
+
+    try {
+      const saved = lastSettled ?? (() => {
+        const fromStore = loadLastSettledBill()
+        if (!fromStore) return null
+        return {
+          salesId: fromStore.salesId,
+          orderData: fromStore.orderData,
+          settleResult: fromStore.settleResult,
+        }
+      })()
+
+      if (saved?.salesId) {
+        await printSettlementBill({
+          salesId: saved.salesId,
+          orderData: saved.orderData,
+          settleResult: saved.settleResult,
+          meta,
+        })
+        showSnackbar('Printing last invoice…', 'success')
+        return
+      }
+
+      // Fallback: latest bill for this counter today from sales viewer
+      const today = new Date()
+      const yyyy = today.getFullYear()
+      const mm = String(today.getMonth() + 1).padStart(2, '0')
+      const dd = String(today.getDate()).padStart(2, '0')
+      const dateKey = `${yyyy}-${mm}-${dd}`
+      const bills = await apiService.fetchSalesViewer({
+        dateFrom: dateKey,
+        dateTo: dateKey,
+        counterNo: getPosSession().counterNo,
+      })
+      const latest = bills[0]
+      const salesId = String(
+        latest?.salesId ?? latest?.SalesID ?? latest?.sales_id ?? '',
+      ).trim()
+      if (!salesId) {
+        showSnackbar('No invoice found for this counter', 'warning')
+        return
+      }
+      await printSettlementBill({ salesId, meta })
+      showSnackbar('Printing last invoice…', 'success')
+    } catch (e) {
+      showSnackbar(e instanceof Error ? e.message : 'Print failed', 'error')
+    }
   }
 
   function handleSaveBillNote(note: string) {
@@ -629,6 +827,7 @@ export default function PosPage() {
       heldAt: new Date().toISOString(),
       note,
       customerName: customerLabel,
+      customerId,
       stylistName: deriveStylistName(billItems),
       items: billItems.map((item) => ({ ...item })),
       appliedDiscount: appliedDiscount ? { ...appliedDiscount } : null,
@@ -656,6 +855,7 @@ export default function PosPage() {
     setBillItems(bill.items.map((item) => ({ ...item })))
     setAppliedDiscount(bill.appliedDiscount ? { ...bill.appliedDiscount } : null)
     setCustomerLabel(bill.customerName || 'Walk-in')
+    setCustomerId(Number(bill.customerId) || 0)
     setActiveAppointmentId(bill.appointmentId)
     setBillStartedAt(new Date())
 
@@ -738,19 +938,25 @@ export default function PosPage() {
   }
 
   function handleOpenCustomer() {
-    setCustomerModalOpen(true)
+    setCustomerSelectOpen(true)
   }
 
-  function handleCustomerSaved(customer: unknown) {
-    const name =
-      customer &&
-      typeof customer === 'object' &&
-      'name' in customer &&
-      typeof (customer as { name: unknown }).name === 'string'
-        ? (customer as { name: string }).name
-        : customerLabel
-    setCustomerLabel(name || 'Customer')
-    showSnackbar('Customer saved', 'success')
+  function handleCustomerSelect(customer: SelectedPosCustomer | null) {
+    if (!customer) {
+      setCustomerLabel('Walk-in')
+      setCustomerId(0)
+      showSnackbar('Walk-in customer', 'info')
+      return
+    }
+    const id = Number(customer.id) || 0
+    setCustomerId(id)
+    setCustomerLabel(customer.name || 'Customer')
+    showSnackbar(
+      customer.mobile
+        ? `Customer: ${customer.name} (${customer.mobile})`
+        : `Customer: ${customer.name}`,
+      'success',
+    )
   }
 
   function handleOpenAppointments() {
@@ -771,6 +977,7 @@ export default function PosPage() {
     if (billItems.length === 0) setBillStartedAt(new Date())
     setBillItems((prev) => [...prev, ...lines])
     setCustomerLabel(appt.customerName || 'Customer')
+    setCustomerId(Number(appt.customerId) || 0)
     setActiveAppointmentId(appt.id)
 
     await markAppointmentLoaded(appt.id)
@@ -823,14 +1030,31 @@ export default function PosPage() {
         </aside>
 
         <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <ServicePanel
-            groups={serviceGroups}
-            products={groupProducts}
-            activeGroup={activeGroup}
-            onSelectGroup={setActiveGroup}
-            onSelectProduct={handleSelectProduct}
-            onBack={() => setActiveGroup(null)}
-          />
+          {catalogueLoading ? (
+            <div className="flex h-full items-center justify-center rounded-2xl border border-white/40 bg-white/40 text-salon-muted font-semibold">
+              Loading catalogue…
+            </div>
+          ) : catalogueError ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-white/40 bg-white/40 p-6 text-center">
+              <p className="text-salon-danger font-semibold">{catalogueError}</p>
+              <button
+                type="button"
+                className="h-10 px-4 rounded-lg bg-salon-primary text-white font-bold"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <ServicePanel
+              groups={serviceGroups}
+              products={groupProducts}
+              activeGroup={activeGroup}
+              onSelectGroup={setActiveGroup}
+              onSelectProduct={handleSelectProduct}
+              onBack={() => setActiveGroup(null)}
+            />
+          )}
         </section>
       </main>
 
@@ -846,7 +1070,7 @@ export default function PosPage() {
           onSaveBill={() => void handleSaveBill()}
           onQuickCash={handleOpenQuickCash}
           onCard={handleOpenCard}
-          onQrPay={handleOpenQrPay}
+          onBillPrintLast={() => void handleBillPrintLast()}
           onJobList={() => setJobListOpen(true)}
           onSettlement={() => void openSettlement()}
         />
@@ -872,39 +1096,16 @@ export default function PosPage() {
           onClose={() => setSettleOpen(false)}
           onSuccess={(result) => {
             const printOrder = result.settledOrder
-            setLastSettled({
+            rememberSettled({
               salesId: result.salesId,
+              billNo: result.billNo,
               orderData: printOrder,
               settleResult: result as unknown as Record<string, unknown>,
             })
             setSettleOpen(false)
             resetBillState()
-
-            void (async () => {
-              if (result.printReceipt) {
-                try {
-                  await printSettlementBill({
-                    salesId: result.salesId,
-                    orderData: printOrder,
-                    settleResult: result as unknown as Record<string, unknown>,
-                    meta: {
-                      counterNo: getPosSession().counterNo,
-                      companyName: 'MOIF TECHNOLOGY',
-                    },
-                  })
-                  showSnackbar(`Settled bill #${result.billNo} — printing…`, 'success')
-                } catch (e) {
-                  showSnackbar(
-                    e instanceof Error
-                      ? `Settled #${result.billNo} but print failed: ${e.message}`
-                      : `Settled #${result.billNo} but print failed`,
-                    'warning',
-                  )
-                }
-              } else {
-                showSnackbar(`Settled bill #${result.billNo}`, 'success')
-              }
-            })()
+            showSnackbar(`Settled bill #${result.billNo}`, 'success')
+            returnToPinLogin()
           }}
         />
       )}
@@ -926,7 +1127,7 @@ export default function PosPage() {
       <CounterCloseDialog
         open={counterCloseOpen}
         onClose={() => setCounterCloseOpen(false)}
-        isAdmin
+        isAdmin={isPosAdmin()}
       />
 
       <GroupDetailsModal
@@ -935,6 +1136,7 @@ export default function PosPage() {
         onSaved={() => {
           setGroupEntryOpen(false)
           showSnackbar('Group saved', 'success')
+          void loadCatalogue()
         }}
         onError={(msg: string) => showSnackbar(msg, 'error')}
       />
@@ -949,10 +1151,16 @@ export default function PosPage() {
       />
       <ProductDetailsModal
         open={productEntryOpen}
-        onClose={() => setProductEntryOpen(false)}
+        initialProduct={productEditInitial}
+        onClose={() => {
+          setProductEntryOpen(false)
+          setProductEditInitial(null)
+        }}
         onSaved={() => {
           setProductEntryOpen(false)
-          showSnackbar('Product saved', 'success')
+          setProductEditInitial(null)
+          showSnackbar(productEditInitial ? 'Product updated' : 'Product saved', 'success')
+          void loadCatalogue()
         }}
         onError={(msg: string) => showSnackbar(msg, 'error')}
       />
@@ -966,11 +1174,33 @@ export default function PosPage() {
         onError={(msg: string) => showSnackbar(msg, 'error')}
       />
 
-      <QuickCashPaymentModal
-        open={cashModalOpen}
-        onClose={() => setCashModalOpen(false)}
-        amount={totals.total}
-        onComplete={handleCashPaymentComplete}
+      <CustomerListDialog
+        open={customerListOpen}
+        onClose={() => setCustomerListOpen(false)}
+        onError={(msg) => showSnackbar(msg, 'error')}
+        onInfo={(msg) => showSnackbar(msg, 'success')}
+      />
+      <ProductListDialog
+        open={productListOpen}
+        onClose={() => setProductListOpen(false)}
+        onError={(msg) => showSnackbar(msg, 'error')}
+        onInfo={(msg) => showSnackbar(msg, 'success')}
+        onCatalogueChanged={() => void loadCatalogue()}
+      />
+
+      <GroupListDialog
+        open={groupListOpen}
+        onClose={() => setGroupListOpen(false)}
+        onError={(msg) => showSnackbar(msg, 'error')}
+        onInfo={(msg) => showSnackbar(msg, 'success')}
+        onCatalogueChanged={() => void loadCatalogue()}
+      />
+
+      <PosSetupDialog
+        open={posSetupOpen}
+        onClose={() => setPosSetupOpen(false)}
+        onError={(msg) => showSnackbar(msg, 'error')}
+        onSaved={(msg) => showSnackbar(msg, 'success')}
       />
 
       <SalesViewerDialog
@@ -978,11 +1208,18 @@ export default function PosPage() {
         onClose={() => setSalesViewerOpen(false)}
       />
 
-      <CustomerEntryModal
-        open={customerModalOpen}
-        onClose={() => setCustomerModalOpen(false)}
-        onSaved={handleCustomerSaved}
+      <SalesReportDialog
+        open={salesReportKind != null}
+        kind={salesReportKind ?? 'salesman'}
+        onClose={() => setSalesReportKind(null)}
+      />
+
+      <CustomerSelectDialog
+        open={customerSelectOpen}
+        onClose={() => setCustomerSelectOpen(false)}
+        onSelect={handleCustomerSelect}
         onError={(msg: string) => showSnackbar(msg, 'error')}
+        selectedId={customerId > 0 ? String(customerId) : null}
       />
       <AppointmentListModal
         open={appointmentModalOpen}
@@ -1030,19 +1267,6 @@ export default function PosPage() {
         currentNote={billNote}
         onSave={handleSaveBillNote}
       />
-      <CardPaymentModal
-        open={cardModalOpen}
-        onClose={() => setCardModalOpen(false)}
-        amount={totals.total}
-        onComplete={handleCardPaymentComplete}
-      />
-      <QrPayModal
-        open={qrModalOpen}
-        onClose={() => setQrModalOpen(false)}
-        amount={totals.total}
-        billRef={billNoLabel}
-        onComplete={handleQrPaymentComplete}
-      />
       {qtyEdit && (
         <NumericKeypadModal
           open
@@ -1061,6 +1285,35 @@ export default function PosPage() {
           }}
           onDone={applyQtyEdit}
           onClose={cancelQtyEdit}
+        />
+      )}
+      {priceEdit && (
+        <NumericKeypadModal
+          open
+          title="Price Change"
+          label={priceEdit.product.name}
+          value={priceEdit.draft}
+          error={priceEdit.error}
+          placeholder="0.00"
+          allowDecimal
+          doneLabel="Add"
+          leftExtra={
+            <p className="mt-3 text-sm text-salon-muted">
+              This item has no set price. Enter the unit price to add it to the bill.
+            </p>
+          }
+          onKey={(key) => {
+            setPriceEdit((p) => {
+              if (!p) return p
+              const next = applyNumericKey(p.draft, key, {
+                allowDecimal: true,
+                maxDecimalPlaces: 2,
+              })
+              return { ...p, draft: next, error: null }
+            })
+          }}
+          onDone={applyPriceEdit}
+          onClose={cancelPriceEdit}
         />
       )}
     </div>

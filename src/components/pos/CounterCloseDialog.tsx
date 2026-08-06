@@ -11,8 +11,8 @@ import {
   mapCounterCloseForUi,
 } from '../../lib/counterCloseMapper'
 import { printCounterReport } from '../../lib/printCounterReport'
-import { getPosSession } from '../../utils/posSession'
-import { fmtMoney } from '../../utils/posSession'
+import { getPosSession, fmtMoney } from '../../utils/posSession'
+import { fetchReceiptSettings } from '../../utils/receiptSettings'
 
 const BRAND = '#521C1D'
 const PANEL_BG = '#FAF6F1'
@@ -210,7 +210,7 @@ export default function CounterCloseDialog({
 
       try {
         await printCounterReport(mapped, {
-          companyName: 'MOIF TECHNOLOGY',
+          companyName: (await fetchReceiptSettings()).heading1 || undefined,
           counterNo: session.counterNo,
           reportType: type,
           closeNo,

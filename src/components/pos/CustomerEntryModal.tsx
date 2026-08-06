@@ -11,15 +11,26 @@ import {
   isValidEmail,
   isValidMobile,
 } from '../../utils/customerValidation'
-import { createCustomer } from '../../api/customers.ts'
+import { createCustomer, updateCustomer } from '../../api/customers.ts'
 import NumericKeypad from '../common/NumericKeypad'
 import AlphaKeyboard from '../common/AlphaKeyboard'
 import { applyNumericKey, type NumericKey } from '../../utils/numericInput'
 
+export type InitialCustomer = {
+  id: string
+  name: string
+  mobile: string
+  email?: string
+  address?: string
+}
 
 interface CustomerEntryModalProps {
   open: boolean
   onClose: () => void
+  /** Pass when editing an existing customer */
+  initialCustomer?: InitialCustomer | null
+  /** Prefill create form (e.g. mobile from Select Customer search) */
+  prefill?: Partial<Pick<CustomerFormValues, 'name' | 'mobile' | 'email' | 'address'>> | null
   /** Called after successful create — parent can set Walk-in → name, refresh list, etc. */
   onSaved?: (customer: unknown) => void
   /** Optional: show errors via snackbar from parent */
@@ -38,6 +49,8 @@ const emptyForm: CustomerFormValues = {
 export default function CustomerEntryModal({
   open,
   onClose,
+  initialCustomer = null,
+  prefill = null,
   onSaved,
   onError,
 }: CustomerEntryModalProps) {
@@ -48,16 +61,45 @@ export default function CustomerEntryModal({
   const [keyboardField, setKeyboardField] = useState<'name' | 'email' | 'address' | null>(null)
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
+  const backdropDownRef = useRef(false)
+  const sessionKeyRef = useRef<string | null>(null)
+  const isEdit = Boolean(initialCustomer?.id)
 
-  // Reset when opened
+  // Reset once per open session (not on every parent re-render / new initialCustomer object)
   useEffect(() => {
-    if (!open) return
-    setStep(1)
-    setForm(emptyForm)
+    if (!open) {
+      sessionKeyRef.current = null
+      return
+    }
+    const key = initialCustomer?.id
+      ? `edit:${initialCustomer.id}`
+      : `new:${prefill?.mobile ?? ''}|${prefill?.name ?? ''}`
+    if (sessionKeyRef.current === key) return
+    sessionKeyRef.current = key
+    if (initialCustomer?.id) {
+      setStep(1)
+      setForm({
+        name: initialCustomer.name ?? '',
+        mobile: initialCustomer.mobile ?? '',
+        email: initialCustomer.email ?? '',
+        address: initialCustomer.address ?? '',
+      })
+    } else {
+      const next = {
+        ...emptyForm,
+        name: prefill?.name ?? '',
+        mobile: prefill?.mobile ?? '',
+        email: prefill?.email ?? '',
+        address: prefill?.address ?? '',
+      }
+      setForm(next)
+      // If search was a mobile number, land on Mobile step so it is visible
+      setStep(next.mobile && !next.name ? 2 : 1)
+    }
     setFieldError(null)
     setSaving(false)
     setKeyboardField(null)
-  }, [open])
+  }, [open, initialCustomer, prefill])
 
   // Close the on-screen keyboard when moving between steps
   useEffect(() => {
@@ -181,7 +223,10 @@ export default function CustomerEntryModal({
         email: form.email.trim() || undefined,
         address: form.address.trim() || undefined,
       }
-      const customer = await createCustomer(payload)
+      const customer =
+        isEdit && initialCustomer
+          ? await updateCustomer(initialCustomer.id, payload)
+          : await createCustomer(payload)
       onSaved?.(customer)
       onClose()
     } catch (e) {
@@ -223,23 +268,32 @@ export default function CustomerEntryModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="customer-entry-title"
+      onMouseDown={(e) => {
+        backdropDownRef.current = e.target === e.currentTarget
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target !== e.currentTarget || !backdropDownRef.current) return
+        backdropDownRef.current = false
+        if (window.getSelection()?.toString()) return
+        onClose()
       }}
     >
       <div
         ref={panelRef}
         className="flex w-full max-w-[720px] h-[min(560px,90dvh)] flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/90 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_8px_32px_rgba(31,17,20,0.18)] transition-transform duration-200"
+        onMouseDown={() => {
+          backdropDownRef.current = false
+        }}
       >
         {/* Header */}
         <header className="flex shrink-0 items-center justify-between border-b border-salon-border px-5 py-4">
           <div>
             <h2 id="customer-entry-title" className="text-xl font-bold text-salon-text">
-              Customer Entry
+              {isEdit ? 'Edit Customer' : 'Customer Entry'}
             </h2>
             <p className="mt-0.5 text-sm font-medium text-salon-muted">
               Step {step} of 4 · {STEP_LABELS[step - 1]}

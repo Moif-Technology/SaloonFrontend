@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { X, FolderPlus, Save } from 'lucide-react'
 import Button from '../common/Button'
 import { createGroup, updateGroup } from '../../api/groups'
@@ -77,11 +77,19 @@ export default function GroupDetailsModal({
   const [saving, setSaving] = useState(false)
   /** Auto = system sequential code (locked); Manual = free-form entry */
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto')
+  const sessionKeyRef = useRef<string | null>(null)
+  const backdropDownRef = useRef(false)
 
   const isEdit = Boolean(initialGroup?.id)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      sessionKeyRef.current = null
+      return
+    }
+    const key = initialGroup?.id ?? 'new'
+    if (sessionKeyRef.current === key) return
+    sessionKeyRef.current = key
     if (initialGroup) {
       setForm({
         name: initialGroup.name ?? '',
@@ -183,8 +191,8 @@ export default function GroupDetailsModal({
 
       onSaved?.(result)
       onClose()
-    } catch {
-      const message = 'Could not save group'
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not save group'
       setFieldError(message)
       onError?.(message)
     } finally {
@@ -205,11 +213,22 @@ export default function GroupDetailsModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="group-entry-title"
+      onMouseDown={(e) => {
+        backdropDownRef.current = e.target === e.currentTarget
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target !== e.currentTarget || !backdropDownRef.current) return
+        backdropDownRef.current = false
+        if (window.getSelection()?.toString()) return
+        onClose()
       }}
     >
-      <div className="flex w-full max-h-[min(640px,92dvh)] max-w-[560px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
+      <div
+        className="flex w-full max-h-[min(640px,92dvh)] max-w-[560px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl"
+        onMouseDown={() => {
+          backdropDownRef.current = false
+        }}
+      >
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-salon-border px-4 py-3.5 sm:px-5 sm:py-4">
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">

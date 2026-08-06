@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { X, Scissors, Save, RotateCcw } from 'lucide-react'
 import Button from '../common/Button'
 import { createService, updateService } from '../../api/services'
@@ -95,6 +95,10 @@ export default function ServiceDetailsModal({
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto')
 
   const isEdit = Boolean(initialService?.id)
+  const backdropDownRef = useRef(false)
+  const sessionKeyRef = useRef<string | null>(null)
+  const onErrorRef = useRef(onError)
+  onErrorRef.current = onError
 
   function resetForm(from?: CatalogueService | null) {
     if (from) {
@@ -122,7 +126,13 @@ export default function ServiceDetailsModal({
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      sessionKeyRef.current = null
+      return
+    }
+    const key = initialService?.id ?? 'new'
+    if (sessionKeyRef.current === key) return
+    sessionKeyRef.current = key
     resetForm(initialService)
   }, [open, initialService])
 
@@ -136,7 +146,7 @@ export default function ServiceDetailsModal({
         if (cancelled) return
         setGroups(list.filter((g) => g.active !== false))
       } catch {
-        if (!cancelled) onError?.('Could not load groups')
+        if (!cancelled) onErrorRef.current?.('Could not load groups')
       } finally {
         if (!cancelled) setLoadingGroups(false)
       }
@@ -145,7 +155,7 @@ export default function ServiceDetailsModal({
     return () => {
       cancelled = true
     }
-  }, [open, onError])
+  }, [open])
 
   useEffect(() => {
     if (!open || !form.groupId) {
@@ -160,7 +170,7 @@ export default function ServiceDetailsModal({
         if (cancelled) return
         setSubGroups(list)
       } catch {
-        if (!cancelled) onError?.('Could not load sub groups')
+        if (!cancelled) onErrorRef.current?.('Could not load sub groups')
       } finally {
         if (!cancelled) setLoadingSubGroups(false)
       }
@@ -169,7 +179,7 @@ export default function ServiceDetailsModal({
     return () => {
       cancelled = true
     }
-  }, [open, form.groupId, onError])
+  }, [open, form.groupId])
 
   useEffect(() => {
     if (!open) return
@@ -305,11 +315,22 @@ export default function ServiceDetailsModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="service-entry-title"
+      onMouseDown={(e) => {
+        backdropDownRef.current = e.target === e.currentTarget
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target !== e.currentTarget || !backdropDownRef.current) return
+        backdropDownRef.current = false
+        if (window.getSelection()?.toString()) return
+        onClose()
       }}
     >
-      <div className="flex w-full max-h-[min(720px,92dvh)] max-w-[560px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
+      <div
+        className="flex w-full max-h-[min(720px,92dvh)] max-w-[560px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl"
+        onMouseDown={() => {
+          backdropDownRef.current = false
+        }}
+      >
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-salon-border px-4 py-3.5 sm:px-5 sm:py-4">
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">

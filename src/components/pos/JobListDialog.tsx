@@ -7,7 +7,7 @@ import { CalendarDays, ListOrdered, RefreshCw, Search, X } from 'lucide-react'
 import { apiService } from '../../api/apiService'
 import { printJobDraft } from '../../lib/printBillReceipt'
 import type { BillItem } from '../../types/pos'
-import { fmtMoney } from '../../utils/posSession'
+import { fmtMoney, getPosSession } from '../../utils/posSession'
 
 const ACCENT = '#780829'
 const ACCENT_SOFT = 'rgba(120, 8, 41, 0.07)'
@@ -18,6 +18,7 @@ export interface LoadedJobInvoice {
   jobId: number
   jobNo: string | null
   customerName: string
+  customerId?: number
   items: BillItem[]
   startedAt: Date | null
 }
@@ -75,6 +76,37 @@ function displayOrEmpty(value: unknown) {
   return s || ''
 }
 
+/** True when this job belongs to the logged-in staff (can Invoice). Others stay visible. */
+function canInvoiceJob(job: Record<string, unknown>): boolean {
+  const session = getPosSession()
+  const myId = String(session.staffId || '').trim()
+  const myName = String(session.staffName || '').trim().toLowerCase()
+  if (!myId && !myName) return false
+
+  const ownerIds = [
+    job.PrimaryStylistID,
+    job.primaryStylistId,
+    job.CreatedBy,
+    job.createdBy,
+    job.staffId,
+    job.StaffID,
+  ]
+    .map((v) => String(v ?? '').trim())
+    .filter(Boolean)
+
+  if (myId && ownerIds.some((id) => id === myId)) return true
+
+  const ownerName = displayOrEmpty(
+    job.PrimaryStylistName ?? job.primaryStylistName ?? job.staffName ?? '',
+  ).toLowerCase()
+  if (myName && ownerName && ownerName === myName) return true
+
+  // Legacy jobs with no owner recorded — allow invoice so they are not stuck
+  if (ownerIds.length === 0 && !ownerName) return true
+
+  return false
+}
+
 /** Map GET /job/:id response → bill panel items */
 export function mapJobDetailsToInvoice(
   details: Record<string, unknown>,
@@ -101,6 +133,14 @@ export function mapJobDetailsToInvoice(
       master.CustomerName ??
       'Walk-in',
   )
+  const customerId =
+    Number(
+      listRow?.CustomerID ??
+        listRow?.customerId ??
+        master.CustomerID ??
+        master.customerId ??
+        0,
+    ) || 0
 
   const startRaw =
     listRow?.StartTime ?? listRow?.KotTime ?? master.StartTime ?? master.startTime
@@ -135,6 +175,7 @@ export function mapJobDetailsToInvoice(
     jobId,
     jobNo,
     customerName,
+    customerId,
     items,
     startedAt:
       startedAt && !Number.isNaN(startedAt.getTime()) ? startedAt : null,
@@ -212,6 +253,10 @@ export default function JobListDialog({ open, onClose, onInvoice }: JobListDialo
   )
 
   async function handleInvoice(job: Record<string, unknown>) {
+    if (!canInvoiceJob(job)) {
+      setError('Only the logged-in staff can invoice their own jobs')
+      return
+    }
     const id = jobIdOf(job)
     if (!id) {
       setError('Invalid job id')
@@ -456,6 +501,7 @@ export default function JobListDialog({ open, onClose, onInvoice }: JobListDialo
                   const busy = loadingInvoiceId === id
                   const printing = printingJobId === id
                   const rowBusy = !!loadingInvoiceId || !!printingJobId
+                  const ownJob = canInvoiceJob(job)
                   const rowBg = index % 2 === 0 ? '#FFFFFF' : ROW_ALT
 
                   return (
@@ -539,10 +585,15 @@ export default function JobListDialog({ open, onClose, onInvoice }: JobListDialo
                       >
                         <button
                           type="button"
-                          disabled={rowBusy}
+                          disabled={rowBusy || !ownJob}
+                          title={
+                            ownJob
+                              ? 'Load job to bill for settlement'
+                              : 'Only the staff who owns this job can invoice it'
+                          }
                           className="inline-flex items-center justify-center min-w-[88px] h-[40px] px-3 text-white text-[14px] font-extrabold disabled:opacity-45 hover:brightness-110 transition"
                           style={{
-                            background: ACCENT,
+                            background: ownJob ? ACCENT : '#9CA3AF',
                             borderRadius: 8,
                           }}
                           onClick={() => void handleInvoice(job)}
@@ -575,6 +626,10 @@ export default function JobListDialog({ open, onClose, onInvoice }: JobListDialo
         >
           <span className="text-[14px] font-semibold text-black/50">
             {jobs.length} job{jobs.length === 1 ? '' : 's'}
+            <span className="font-medium text-black/40">
+              {' '}
+              · Invoice only your own jobs
+            </span>
           </span>
           {printError && (
             <span className="text-[13px] font-semibold text-red-600 truncate flex-1">

@@ -40,19 +40,23 @@ export function salesViewerLineTotals(
  * Summary rows for Bill With Details.
  * Line discount appears only in the line DISC column — bill discount only here.
  */
-export function salesViewerSummaryRows(bill: {
-  items?: Array<{
-    discount?: number
+export function salesViewerSummaryRows(
+  bill: {
+    items?: Array<{
+      discount?: number
+      subTotal?: number
+      lineTotal?: number
+      vatAmt?: number
+    }>
+    discountAmt?: number
+    taxableAmt?: number
     subTotal?: number
-    lineTotal?: number
-    vatAmt?: number
-  }>
-  discountAmt?: number
-  taxableAmt?: number
-  subTotal?: number
-  taxAmt?: number
-  roundOff?: number
-}): [string, number][] {
+    taxAmt?: number
+    roundOff?: number
+  },
+  opts?: { showTax?: boolean },
+): [string, number][] {
+  const showTax = opts?.showTax !== false
   const items = bill?.items ?? []
   const { lineDisc, lineTaxable, lineTaxableBefore, lineTax } = salesViewerLineTotals(items)
 
@@ -76,12 +80,12 @@ export function salesViewerSummaryRows(bill: {
   const taxAmt = roundMoney(Number(bill?.taxAmt) || lineTax)
   const roundOff = roundMoney(Number(bill?.roundOff) || 0)
 
-  const rows: [string, number][] = [['Taxable (before discount)', taxableBefore]]
+  const rows: [string, number][] = [
+    [showTax ? 'Taxable (before discount)' : 'Subtotal (before discount)', taxableBefore],
+  ]
   if (billDisc > 0) rows.push(['Bill Discount', billDisc])
-  rows.push(
-    ['Taxable (after discount)', taxableAfter],
-    ['Tax', taxAmt],
-    ['Round Off', roundOff],
-  )
+  rows.push([showTax ? 'Taxable (after discount)' : 'Subtotal (after discount)', taxableAfter])
+  if (showTax) rows.push(['Tax', taxAmt])
+  rows.push(['Round Off', roundOff])
   return rows
 }

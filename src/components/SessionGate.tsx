@@ -1,65 +1,72 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { ensureDevSession } from '../bootstrap/devAutoLogin'
-import { SessionManager } from '../utils/sessionManager'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from 'react'
+import EnrollScreen from '../pages/auth/EnrollScreen'
+import PinLoginScreen from '../pages/auth/PinLoginScreen'
+import { clearEnrollment, isDeviceEnrolled } from '../utils/deviceEnrollment'
+import { clearStaffSession, hasActiveStaffSession } from '../utils/pinLoginSession'
 
+const AuthLogoutContext = createContext<() => void>(() => {
+  clearStaffSession()
+  window.location.reload()
+})
+
+export function useReturnToPinLogin() {
+  return useContext(AuthLogoutContext)
+}
+
+/**
+ * Auth gate: enroll device → PIN login → POS.
+ * Logout clears staff JWT only; enrollment stays so the next staff enters PIN.
+ */
 export default function SessionGate({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [staffName, setStaffName] = useState('')
+  const [enrolled, setEnrolled] = useState(() => isDeviceEnrolled())
+  const [loggedIn, setLoggedIn] = useState(() => hasActiveStaffSession())
+  const [authKey, setAuthKey] = useState(0)
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        await ensureDevSession()
-        if (cancelled) return
-        setStaffName(SessionManager.staffName || 'STAFF1')
-        setReady(true)
-      } catch (e) {
-        if (cancelled) return
-        setError(e instanceof Error ? e.message : 'Auto login failed')
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
+  const forcePin = useCallback(() => {
+    clearStaffSession()
+    setLoggedIn(false)
+    setEnrolled(isDeviceEnrolled())
+    setAuthKey((k) => k + 1)
   }, [])
 
-  if (error) {
+  const unpair = useCallback(() => {
+    clearStaffSession()
+    clearEnrollment()
+    setLoggedIn(false)
+    setEnrolled(false)
+    setAuthKey((k) => k + 1)
+  }, [])
+
+  if (!enrolled) {
     return (
-      <div className="h-full flex items-center justify-center bg-salon-bg p-6">
-        <div className="max-w-md w-full bg-white border border-salon-border rounded-2xl p-6 shadow-sm">
-          <h1 className="text-xl font-bold text-salon-primary mb-2">Login failed</h1>
-          <p className="text-sm text-salon-muted mb-4">
-            Temporary auto-login uses STAFF1 / PIN 1234. Check API is running on :5010.
-          </p>
-          <p className="text-sm font-semibold text-salon-danger whitespace-pre-wrap">{error}</p>
-          <button
-            type="button"
-            className="mt-4 w-full h-11 rounded-lg bg-salon-primary text-white font-bold"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <EnrollScreen
+        key={`enroll-${authKey}`}
+        onEnrolled={() => {
+          setEnrolled(true)
+          setLoggedIn(false)
+          setAuthKey((k) => k + 1)
+        }}
+      />
     )
   }
 
-  if (!ready) {
+  if (!loggedIn) {
     return (
-      <div className="h-full flex items-center justify-center bg-salon-bg text-salon-muted font-semibold">
-        Signing in as STAFF1…
-      </div>
+      <PinLoginScreen
+        key={`pin-${authKey}`}
+        onLoggedIn={() => setLoggedIn(true)}
+        onNeedsEnrollment={unpair}
+      />
     )
   }
 
   return (
-    <>
-      {children}
-      <div className="sr-only" aria-live="polite">
-        Signed in as {staffName}
-      </div>
-    </>
+    <AuthLogoutContext.Provider value={forcePin}>{children}</AuthLogoutContext.Provider>
   )
 }

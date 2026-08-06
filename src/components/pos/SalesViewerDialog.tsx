@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { apiService } from '../../api/apiService'
 import { fmtMoney, getPosSession } from '../../utils/posSession'
+import { fetchReceiptSettings } from '../../utils/receiptSettings'
 import { printBillReceipt, mapSalonViewerBill } from '../../lib/printBillReceipt'
 import { salesViewerSummaryRows } from '../../lib/salesViewerSummary'
 import {
@@ -272,16 +273,21 @@ function BillDetailModal({
   const [loading, setLoading] = useState(true)
   const [printing, setPrinting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasTrn, setHasTrn] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
-    void apiService
-      .fetchSalesViewerBill(salesId)
-      .then((raw) => {
-        if (!cancelled) setBill(mapSalonViewerBill(raw))
+    void Promise.all([
+      apiService.fetchSalesViewerBill(salesId),
+      fetchReceiptSettings(),
+    ])
+      .then(([raw, settings]) => {
+        if (cancelled) return
+        setBill(mapSalonViewerBill(raw))
+        setHasTrn(Boolean(settings.taxRegNo?.trim()))
       })
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load bill')
@@ -308,7 +314,6 @@ function BillDetailModal({
     try {
       const session = getPosSession()
       await printBillReceipt(salesId, {
-        companyName: 'MOIF TECHNOLOGY',
         counterNo: session.counterNo,
       })
       showSnackbar('Printing invoice…', 'success')
@@ -319,12 +324,17 @@ function BillDetailModal({
     }
   }
 
-  const gridCols = 'minmax(70px,1fr) minmax(120px,2fr) 60px 70px 60px 70px 80px'
+  const gridCols = hasTrn
+    ? 'minmax(70px,1fr) minmax(120px,2fr) 60px 70px 60px 70px 80px'
+    : 'minmax(70px,1fr) minmax(120px,2fr) 60px 70px 70px 80px'
   const items = (bill?.items ?? []).map((it) => ({
     ...it,
     discount: Number(it.discount) || 0,
     subTotal: Number(it.lineTotal || 0) - Number(it.vatAmt || 0),
   }))
+  const colHeaders = hasTrn
+    ? ['Code', 'Description', 'Qty', 'Price', 'VAT', 'Disc', 'Total']
+    : ['Code', 'Description', 'Qty', 'Price', 'Disc', 'Total']
 
   return (
     <div
@@ -344,7 +354,7 @@ function BillDetailModal({
         >
           <div>
             <p className="m-0 text-[11px] font-bold uppercase tracking-wide text-white/60">
-              Bill with details
+              {hasTrn ? 'Tax Invoice' : 'Invoice'}
             </p>
             <p className="m-0 mt-0.5 text-[17px] font-extrabold">
               {bill?.billNo != null ? `Bill #${bill.billNo}` : `Bill #${salesId}`}
@@ -420,7 +430,7 @@ function BillDetailModal({
                     borderColor: BORDER,
                   }}
                 >
-                  {['Code', 'Description', 'Qty', 'Price', 'VAT', 'Disc', 'Total'].map((h) => (
+                  {colHeaders.map((h) => (
                     <span
                       key={h}
                       className="text-[10px] font-extrabold uppercase tracking-wide text-black/55"
@@ -444,7 +454,11 @@ function BillDetailModal({
                       <span className="truncate">{it.description}</span>
                       <span className="text-right tabular-nums">{fmtQty(it.qty)}</span>
                       <span className="text-right tabular-nums">{fmtMoney(Number(it.unitPrice) || 0)}</span>
-                      <span className="text-right tabular-nums">{fmtMoney(Number(it.vatAmt) || 0)}</span>
+                      {hasTrn ? (
+                        <span className="text-right tabular-nums">
+                          {fmtMoney(Number(it.vatAmt) || 0)}
+                        </span>
+                      ) : null}
                       <span className="text-right tabular-nums">
                         {fmtMoney(Number(it.discount) || 0)}
                       </span>
@@ -463,13 +477,16 @@ function BillDetailModal({
 
               <div className="flex justify-end">
                 <div className="min-w-[220px]">
-                  {salesViewerSummaryRows({
-                    items,
-                    discountAmt: bill.discountAmt,
-                    taxableAmt: bill.taxableAmt,
-                    taxAmt: bill.taxAmt,
-                    roundOff: bill.roundOff,
-                  }).map(([k, v]) => (
+                  {salesViewerSummaryRows(
+                    {
+                      items,
+                      discountAmt: bill.discountAmt,
+                      taxableAmt: bill.taxableAmt,
+                      taxAmt: bill.taxAmt,
+                      roundOff: bill.roundOff,
+                    },
+                    { showTax: hasTrn },
+                  ).map(([k, v]) => (
                     <div
                       key={k}
                       className="flex justify-between py-1 text-[13px] font-semibold"

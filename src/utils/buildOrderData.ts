@@ -106,8 +106,13 @@ export function buildOrderData(opts: {
 }
 
 /** Payload for POST /salon-pos/job/save before settle (unsaved cart path). */
-export function buildJobSavePayload(billItems: BillItem[], taxRate = DEFAULT_TAX_RATE) {
+export function buildJobSavePayload(
+  billItems: BillItem[],
+  opts?: { taxRate?: number; customerId?: number },
+) {
   const session = getPosSession()
+  const taxRate = opts?.taxRate ?? DEFAULT_TAX_RATE
+  const customerId = Number(opts?.customerId) > 0 ? Number(opts?.customerId) : 0
   const items = billItems.map((item) => {
     const qty = item.qty
     const rate = item.price
@@ -147,8 +152,9 @@ export function buildJobSavePayload(billItems: BillItem[], taxRate = DEFAULT_TAX
     gvCashierID: session.staffId,
     gvUserName: session.staffName,
     gvCounterNo: String(session.counterNo),
-    CustomerID: 0,
-    customerId: 0,
+    CustomerID: customerId,
+    customerId,
+    mfCustomerID: customerId,
     txtDiscount: 0,
     lblSubTotalAmt: sub,
     lblTax1Total: tax,

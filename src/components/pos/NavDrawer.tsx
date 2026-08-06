@@ -1,5 +1,6 @@
 import { X, ChevronRight, DoorClosed } from 'lucide-react'
 import { NAV_MENU_SECTIONS, type NavMenuItem } from '../../data/navMenu'
+import { isPosAdmin } from '../../utils/posAdmin'
 
 interface NavDrawerProps {
   open: boolean
@@ -18,6 +19,12 @@ export default function NavDrawer({
   staffName,
 }: NavDrawerProps) {
   if (!open) return null
+
+  const admin = isPosAdmin()
+  const sections = NAV_MENU_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.adminOnly || admin),
+  })).filter((section) => section.items.length > 0)
 
   return (
     <div
@@ -79,7 +86,7 @@ export default function NavDrawer({
             </button>
           )}
 
-          {NAV_MENU_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <div key={section.id} className="mb-4">
               <div className="mb-2 flex items-center gap-2 px-2 text-salon-primary">
                 <section.icon size={18} />

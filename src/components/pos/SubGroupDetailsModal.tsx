@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { X, Layers, Save } from 'lucide-react'
 import Button from '../common/Button'
 import { createSubGroup, updateSubGroup } from '../../api/subGroups'
@@ -88,9 +88,18 @@ export default function SubGroupDetailsModal({
   const [codeMode, setCodeMode] = useState<'auto' | 'manual'>('auto')
 
   const isEdit = Boolean(initialSubGroup?.id)
+  const sessionKeyRef = useRef<string | null>(null)
+  const onErrorRef = useRef(onError)
+  onErrorRef.current = onError
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      sessionKeyRef.current = null
+      return
+    }
+    const key = initialSubGroup?.id ?? 'new'
+    if (sessionKeyRef.current === key) return
+    sessionKeyRef.current = key
     if (initialSubGroup) {
       setForm({
         parentGroupId: initialSubGroup.parentGroupId ?? '',
@@ -112,7 +121,7 @@ export default function SubGroupDetailsModal({
     setSaving(false)
   }, [open, initialSubGroup])
 
-  // Load parent groups
+  // Load parent groups once when opened
   useEffect(() => {
     if (!open) return
     let cancelled = false
@@ -123,7 +132,7 @@ export default function SubGroupDetailsModal({
         if (cancelled) return
         setGroups(list.filter((g) => g.active !== false))
       } catch {
-        if (!cancelled) onError?.('Could not load groups')
+        if (!cancelled) onErrorRef.current?.('Could not load groups')
       } finally {
         if (!cancelled) setLoadingGroups(false)
       }
@@ -132,7 +141,7 @@ export default function SubGroupDetailsModal({
     return () => {
       cancelled = true
     }
-  }, [open, onError])
+  }, [open])
 
   useEffect(() => {
     if (!open) return

@@ -176,19 +176,28 @@ export function buildReceiptDiscountAdjustmentHtml(p: {
   discountAmt: number
   roundOff?: number | null
   fmtMoney: (n: number) => string
+  /** When false (no company TRN), use Subtotal labels instead of Taxable */
+  showTaxLabels?: boolean
 }) {
   const disc = Number(p.discountAmt) || 0
   const taxable = Number(p.taxableAmt) || 0
   const ro = p.roundOff != null ? Number(p.roundOff) : 0
   const hasDiscount = Math.abs(disc) > 0.001
   const hasRoundOff = ro != null && !Number.isNaN(ro) && Math.abs(ro) > 0.001
+  const showTax = p.showTaxLabels !== false
   let html = ''
   if (hasDiscount) {
     const beforeDisc = taxable + disc
     const L = RECEIPT_LABELS
+    const beforeLabel = showTax
+      ? buildReceiptBiLabel(L.taxableBeforeDisc)
+      : 'Subtotal (before discount)'
+    const afterLabel = showTax
+      ? buildReceiptBiLabel(L.taxableAfterDisc)
+      : 'Subtotal (after discount)'
     html += `
   <div class="pair-row">
-    <span>${buildReceiptBiLabel(L.taxableBeforeDisc)}</span>
+    <span>${beforeLabel}</span>
     <span class="val">${p.fmtMoney(beforeDisc)}</span>
   </div>
   <div class="pair-row">
@@ -196,7 +205,7 @@ export function buildReceiptDiscountAdjustmentHtml(p: {
     <span class="val">${p.fmtMoney(disc)}</span>
   </div>
   <div class="pair-row">
-    <span>${buildReceiptBiLabel(L.taxableAfterDisc)}</span>
+    <span>${afterLabel}</span>
     <span class="val">${p.fmtMoney(taxable)}</span>
   </div>`
   }

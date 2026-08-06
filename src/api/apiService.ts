@@ -3,10 +3,11 @@
  * Same endpoints / path layout: `{baseURL}{posBasePath}/...` and `/api/...`.
  */
 import axios, { type AxiosRequestConfig } from 'axios'
-import { ensureDevSession } from '../bootstrap/devAutoLogin'
 import { apiUrl, salonPosUrl } from '../config/apiConfig'
+import { clearStaffSession } from '../utils/pinLoginSession'
 import { SessionManager } from '../utils/sessionManager'
 import { getPosSession } from '../utils/posSession'
+import { productRowForPos } from '../utils/catalogueMapper'
 
 function httpErrorMessage(prefix: string, status: number, body: unknown): string {
   if (body && typeof body === 'object' && body !== null && 'message' in body) {
@@ -51,29 +52,16 @@ async function request<T = unknown>(
   }
   const res = await axios.request<T>(config)
 
-  // Access tokens expire in ~15m — re-PIN once and retry authenticated calls.
+  // Access tokens expire — return to PIN login (enrollment kept).
   if (
     res.status === 401 &&
     !opts?.skipAuthRetry &&
     hasBearerAuth(opts?.headers) &&
     !url.includes('/pin-login')
   ) {
-    try {
-      await ensureDevSession(true)
-      const token = SessionManager.accessToken?.trim()
-      if (token) {
-        const retry = await axios.request<T>({
-          ...config,
-          headers: {
-            ...opts?.headers,
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        return { status: retry.status, data: retry.data }
-      }
-    } catch {
-      // Fall through with original 401
-    }
+    clearStaffSession()
+    // Soft reload so SessionGate shows the PIN screen.
+    window.setTimeout(() => window.location.reload(), 0)
   }
 
   return { status: res.status, data: res.data }
@@ -135,7 +123,11 @@ class ApiService {
     const { status, data } = await request<Record<string, unknown>>(
       'POST',
       salonPosUrl('/pin-login'),
-      { body, headers: { 'Content-Type': 'application/json' } },
+      {
+        body,
+        headers: { 'Content-Type': 'application/json' },
+        skipAuthRetry: true,
+      },
     )
     if (status === 200 && data && typeof data === 'object') return data
     throw new Error(httpErrorMessage('PIN login failed', status, data))
@@ -205,6 +197,26 @@ class ApiService {
     )
   }
 
+  async saveCompanyDetails(body: {
+    heading1?: string
+    heading2?: string
+    heading3?: string
+    heading4?: string
+    heading5?: string
+    footer1?: string
+    footer2?: string
+    taxRegNo?: string
+  }): Promise<void> {
+    const { status, data } = await request<Record<string, unknown>>(
+      'PUT',
+      salonPosUrl('/parameters/company-details'),
+      { headers: this.bearerHeaders(), body },
+    )
+    if (status < 200 || status >= 300) {
+      throw new Error(httpErrorMessage('Failed to save company details', status, data))
+    }
+  }
+
   async fetchPrivileges(): Promise<Record<string, unknown>[]> {
     const { status, data } = await request<Record<string, unknown>>(
       'GET',
@@ -243,11 +255,59 @@ class ApiService {
     const display = desc || code || `Group ${gid}`
     return {
       GroupID: `${gid}`,
+      GroupCode: code,
       GroupDescription: display,
       GroupDescriptionArabic: String(m.groupDescriptionArabic ?? m.GroupDescriptionArabic ?? ''),
       KeyShift: m.keyShift ?? m.KeyShift ?? '',
       KeyCode: m.keyCode ?? m.KeyCode ?? '',
+      RStatus: String(m.rStatus ?? m.RStatus ?? 'ACTIVE'),
     }
+  }
+
+  async createGroup(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const { status, data } = await request<Record<string, unknown>>(
+      'POST',
+      apiUrl('/api/groups'),
+      {
+        headers: this.bearerHeaders(),
+        body: { ...body, branchId: body.branchId ?? this.branchId() },
+      },
+    )
+    if (status >= 200 && status < 300 && data && typeof data === 'object') {
+      return (data.group as Record<string, unknown>) ?? data
+    }
+    throw new Error(httpErrorMessage('Create group failed', status, data))
+  }
+
+  async updateGroup(
+    groupId: string | number,
+    body: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { status, data } = await request<Record<string, unknown>>(
+      'PATCH',
+      apiUrl(`/api/groups/${encodeURIComponent(String(groupId))}`),
+      {
+        headers: this.bearerHeaders(),
+        body: { ...body, branchId: body.branchId ?? this.branchId() },
+      },
+    )
+    if (status >= 200 && status < 300 && data && typeof data === 'object') {
+      return (data.group as Record<string, unknown>) ?? data
+    }
+    throw new Error(httpErrorMessage('Update group failed', status, data))
+  }
+
+  async deleteGroup(groupId: string | number): Promise<void> {
+    const { status, data } = await request<Record<string, unknown>>(
+      'DELETE',
+      apiUrl(`/api/groups/${encodeURIComponent(String(groupId))}`),
+      {
+        headers: this.bearerHeaders(),
+        body: { branchId: this.branchId() },
+      },
+    )
+    if (status >= 200 && status < 300) return
+    throw new Error(httpErrorMessage('Delete group failed', status, data))
   }
 
   async fetchProducts(opts?: {
@@ -270,7 +330,7 @@ class ApiService {
     if (status !== 200) throw new Error(httpErrorMessage('Failed to load products', status, data))
     const list = data?.products
     if (!Array.isArray(list)) return []
-    return list as Record<string, unknown>[]
+    return list.map((e) => productRowForPos(e))
   }
 
   async fetchCustomers(opts?: { limit?: number; search?: string }): Promise<Record<string, unknown>[]> {
@@ -303,9 +363,64 @@ class ApiService {
       MobileNo: String(m.mobileNo ?? m.MobileNo ?? ''),
       Telephone: String(m.telephone ?? m.Telephone ?? ''),
       Address: String(m.address ?? m.Address ?? ''),
+      email: String(m.email ?? m.Email ?? ''),
       CustTRN: String(m.taxRegNo ?? m.CustTRN ?? ''),
       creditStatus: String(m.creditStatus ?? 'ACTIVE'),
     }
+  }
+
+  async createCustomer(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const { status, data } = await request<Record<string, unknown>>(
+      'POST',
+      apiUrl('/api/customers'),
+      { headers: this.bearerHeaders(), body },
+    )
+    if (status >= 200 && status < 300 && data && typeof data === 'object') {
+      return (data.customer as Record<string, unknown>) ?? data
+    }
+    throw new Error(httpErrorMessage('Create customer failed', status, data))
+  }
+
+  async updateCustomer(
+    customerId: string | number,
+    body: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { status, data } = await request<Record<string, unknown>>(
+      'PUT',
+      apiUrl(`/api/customers/${encodeURIComponent(String(customerId))}`),
+      { headers: this.bearerHeaders(), body },
+    )
+    if (status >= 200 && status < 300 && data && typeof data === 'object') {
+      return (data.customer as Record<string, unknown>) ?? data
+    }
+    throw new Error(httpErrorMessage('Update customer failed', status, data))
+  }
+
+  async createProduct(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const { status, data } = await request<Record<string, unknown>>(
+      'POST',
+      apiUrl('/api/products'),
+      { headers: this.bearerHeaders(), body },
+    )
+    if (status >= 200 && status < 300 && data && typeof data === 'object') {
+      return (data.product as Record<string, unknown>) ?? data
+    }
+    throw new Error(httpErrorMessage('Create product failed', status, data))
+  }
+
+  async updateProduct(
+    productId: string | number,
+    body: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { status, data } = await request<Record<string, unknown>>(
+      'PUT',
+      apiUrl(`/api/products/${encodeURIComponent(String(productId))}`),
+      { headers: this.bearerHeaders(), body },
+    )
+    if (status >= 200 && status < 300 && data && typeof data === 'object') {
+      return (data.product as Record<string, unknown>) ?? data
+    }
+    throw new Error(httpErrorMessage('Update product failed', status, data))
   }
 
   async fetchStaff(): Promise<Record<string, unknown>[]> {
@@ -472,6 +587,43 @@ class ApiService {
     }
     if (!data || typeof data !== 'object') throw new Error('Bill detail: expected object')
     return data
+  }
+
+  async fetchSalesReport(
+    kind: 'salesman-wise' | 'item-wise' | 'group-wise',
+    opts: {
+      dateFrom: string
+      dateTo: string
+      staffId?: string | number
+      productId?: string | number
+      groupId?: string | number
+    },
+  ): Promise<Record<string, unknown>[]> {
+    const params: Record<string, string | number | undefined> = {
+      dateFrom: opts.dateFrom,
+      dateTo: opts.dateTo,
+    }
+    if (opts.staffId != null && String(opts.staffId) !== '' && String(opts.staffId) !== 'all') {
+      params.staffId = opts.staffId
+    }
+    if (opts.productId != null && String(opts.productId) !== '' && String(opts.productId) !== 'all') {
+      params.productId = opts.productId
+    }
+    if (opts.groupId != null && String(opts.groupId) !== '' && String(opts.groupId) !== 'all') {
+      params.groupId = opts.groupId
+    }
+
+    const { status, data } = await request<Record<string, unknown>>(
+      'GET',
+      salonPosUrl(`/sales/reports/${kind}`),
+      { headers: this.bearerHeaders(), params },
+    )
+    if (status < 200 || status >= 300) {
+      throw new Error(httpErrorMessage(`Failed to load ${kind} report`, status, data))
+    }
+    const rows = data?.rows
+    if (!Array.isArray(rows)) return []
+    return rows as Record<string, unknown>[]
   }
 
   // ── Credit settlement receipts ────────────────────────────────────────────

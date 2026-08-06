@@ -48,6 +48,7 @@ export interface HeldBill {
   heldAt: string
   note: string
   customerName: string
+  customerId?: number
   stylistName: string
   items: BillItem[]
   appliedDiscount: AppliedDiscount | null
