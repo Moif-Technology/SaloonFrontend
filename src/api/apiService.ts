@@ -50,21 +50,37 @@ async function request<T = unknown>(
     timeout: opts?.timeout ?? 20_000,
     validateStatus: () => true,
   }
-  const res = await axios.request<T>(config)
+  try {
+    const res = await axios.request<T>(config)
 
-  // Access tokens expire — return to PIN login (enrollment kept).
-  if (
-    res.status === 401 &&
-    !opts?.skipAuthRetry &&
-    hasBearerAuth(opts?.headers) &&
-    !url.includes('/pin-login')
-  ) {
-    clearStaffSession()
-    // Soft reload so SessionGate shows the PIN screen.
-    window.setTimeout(() => window.location.reload(), 0)
+    // Access tokens expire — return to PIN login (enrollment kept).
+    if (
+      res.status === 401 &&
+      !opts?.skipAuthRetry &&
+      hasBearerAuth(opts?.headers) &&
+      !url.includes('/pin-login')
+    ) {
+      clearStaffSession()
+      // Soft reload so SessionGate shows the PIN screen.
+      window.setTimeout(() => window.location.reload(), 0)
+    }
+
+    return { status: res.status, data: res.data }
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      if (err.code === 'ECONNABORTED') {
+        throw new Error('Request timed out. Check network connection.')
+      }
+      if (!err.response) {
+        throw new Error(
+          err.message === 'Network Error'
+            ? 'Network error — cannot reach server. Check Wi‑Fi and API URL.'
+            : err.message || 'Network request failed',
+        )
+      }
+    }
+    throw err
   }
-
-  return { status: res.status, data: res.data }
 }
 
 class ApiService {
@@ -186,7 +202,7 @@ class ApiService {
     const { status, data } = await request<Record<string, unknown>>(
       'GET',
       salonPosUrl('/parameters'),
-      { headers: this.sessionHeaders() },
+      { headers: this.bearerHeaders() },
     )
     if (status !== 200) throw new Error(httpErrorMessage('Failed to fetch parameters', status, data))
     if (data?.success === true && data.data && typeof data.data === 'object') {
@@ -214,6 +230,11 @@ class ApiService {
     )
     if (status < 200 || status >= 300) {
       throw new Error(httpErrorMessage('Failed to save company details', status, data))
+    }
+    if (data && typeof data === 'object' && 'success' in data && data.success !== true) {
+      throw new Error(
+        typeof data.message === 'string' ? data.message : 'Failed to save company details',
+      )
     }
   }
 
@@ -253,6 +274,7 @@ class ApiService {
     const desc = String(m.groupDescription ?? m.GroupDescription ?? '').trim()
     const code = String(m.groupCode ?? m.GroupCode ?? '').trim()
     const display = desc || code || `Group ${gid}`
+    const sortOrder = Number(m.sortOrder ?? m.sort_order ?? m.SortOrder ?? 0)
     return {
       GroupID: `${gid}`,
       GroupCode: code,
@@ -260,6 +282,8 @@ class ApiService {
       GroupDescriptionArabic: String(m.groupDescriptionArabic ?? m.GroupDescriptionArabic ?? ''),
       KeyShift: m.keyShift ?? m.KeyShift ?? '',
       KeyCode: m.keyCode ?? m.KeyCode ?? '',
+      SortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
+      sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
       RStatus: String(m.rStatus ?? m.RStatus ?? 'ACTIVE'),
     }
   }
@@ -774,6 +798,33 @@ class ApiService {
       return data
     }
     throw new Error(httpErrorMessage('Counter close failed', status, data))
+  }
+
+  /** Record petty cash / float movement — feeds Counter Close cashIn / cashOut. */
+  async addCashInOut(opts: {
+    transactionType: 'CASH_IN' | 'CASH_OUT'
+    amount: number
+    remarks?: string | null
+    counterNo?: number
+  }): Promise<Record<string, unknown>> {
+    const session = getPosSession()
+    const body = {
+      counterNo: opts.counterNo ?? session.counterNo,
+      transactionType: opts.transactionType,
+      amount: Number(opts.amount) || 0,
+      remarks: opts.remarks?.trim() || null,
+    }
+    const { status, data } = await request<Record<string, unknown>>(
+      'POST',
+      salonPosUrl('/counter/cash-in-out'),
+      { headers: this.bearerHeaders(), body, timeout: 20_000 },
+    )
+    if (status === 401) throw new Error('Unauthorized.')
+    if (status === 403) throw new Error('Cash In/Out is not enabled for this plan.')
+    if ((status === 200 || status === 201) && data && typeof data === 'object') {
+      return data
+    }
+    throw new Error(httpErrorMessage('Cash In/Out failed', status, data))
   }
 
   // ── Appointments / stylists ───────────────────────────────────────────────

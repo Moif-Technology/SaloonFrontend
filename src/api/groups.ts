@@ -3,6 +3,8 @@ import { apiService } from './apiService'
 
 function toCatalogue(raw: Record<string, unknown>, fallback?: Partial<GroupPayload>): CatalogueGroup {
   const status = String(raw.rStatus ?? raw.RStatus ?? 'ACTIVE').toUpperCase()
+  const sortRaw = raw.sortOrder ?? raw.SortOrder ?? raw.sort_order ?? fallback?.sortOrder
+  const sortOrder = Number(sortRaw)
   return {
     id: String(raw.groupId ?? raw.GroupID ?? ''),
     name: String(
@@ -10,7 +12,7 @@ function toCatalogue(raw: Record<string, unknown>, fallback?: Partial<GroupPaylo
     ).trim(),
     code: String(raw.groupCode ?? raw.GroupCode ?? fallback?.code ?? '') || undefined,
     active: status === 'ACTIVE' || status === '',
-    sortOrder: fallback?.sortOrder,
+    sortOrder: Number.isFinite(sortOrder) ? sortOrder : undefined,
   }
 }
 
@@ -19,14 +21,18 @@ export async function fetchGroups(): Promise<CatalogueGroup[]> {
   return rows
     .map((g) => toCatalogue(g))
     .filter((g) => g.id && g.id !== '0')
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name))
 }
 
 export async function createGroup(payload: GroupPayload): Promise<CatalogueGroup> {
-  const raw = await apiService.createGroup({
+  const body: Record<string, unknown> = {
     groupCode: payload.code?.trim() || undefined,
     groupDescription: payload.name.trim(),
-    // empty → API auto-codes when omitted; send code when provided
-  })
+  }
+  if (payload.sortOrder != null && Number.isFinite(Number(payload.sortOrder))) {
+    body.sortOrder = Number(payload.sortOrder)
+  }
+  const raw = await apiService.createGroup(body)
   const created = toCatalogue(raw, payload)
   if (!payload.active && created.id) {
     await apiService.deleteGroup(created.id)
@@ -51,9 +57,13 @@ export async function updateGroup(
     }
   }
 
-  const raw = await apiService.updateGroup(id, {
+  const body: Record<string, unknown> = {
     groupCode: payload.code.trim(),
     groupDescription: payload.name.trim(),
-  })
+  }
+  if (payload.sortOrder != null && Number.isFinite(Number(payload.sortOrder))) {
+    body.sortOrder = Number(payload.sortOrder)
+  }
+  const raw = await apiService.updateGroup(id, body)
   return { ...toCatalogue(raw, payload), active: true }
 }

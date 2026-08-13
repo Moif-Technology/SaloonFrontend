@@ -18,7 +18,13 @@ function mapStaffSalesList(raw: unknown) {
   if (!Array.isArray(raw)) return [] as Record<string, unknown>[]
   return raw.map((e) => {
     if (!e || typeof e !== 'object') {
-      return { staffId: null, staffName: 'Unknown', billCount: 0, saleAmount: 0 }
+      return {
+        staffId: null,
+        staffName: 'Unknown',
+        billCount: 0,
+        saleAmount: 0,
+        tipAmount: 0,
+      }
     }
     const m = e as Record<string, unknown>
     return {
@@ -26,6 +32,7 @@ function mapStaffSalesList(raw: unknown) {
       staffName: String(m.staffName ?? m.staff_name ?? m.CashierName ?? 'Unknown'),
       billCount: counterCloseInt(m.billCount ?? m.bill_count),
       saleAmount: counterCloseNum(m.saleAmount ?? m.sale_amount ?? m.grossAmount),
+      tipAmount: counterCloseNum(m.tipAmount ?? m.tip_amount),
       refundAmount: counterCloseNum(m.refundAmount ?? m.refund_amount),
       cashAmount: counterCloseNum(m.cashAmount ?? m.cash_amount),
       cardAmount: counterCloseNum(m.cardAmount ?? m.card_amount),
@@ -72,6 +79,12 @@ export function mapCounterCloseForUi(
     itemDiscountTotal: counterCloseNum(api.itemDiscountTotal),
     totalRefund: refund,
     totalTax: tax,
+    totalTip: counterCloseNum(api.totalTip ?? api.total_tip),
+    totalCashTip: counterCloseNum(api.totalCashTip ?? api.total_cash_tip),
+    totalCardTip: counterCloseNum(api.totalCardTip ?? api.total_card_tip),
+    TipAmount: counterCloseNum(api.totalTip ?? api.total_tip),
+    CashTipAmount: counterCloseNum(api.totalCashTip ?? api.total_cash_tip),
+    CardTipAmount: counterCloseNum(api.totalCardTip ?? api.total_card_tip),
     grossAmount: gross,
     cashIn,
     cashOut,
@@ -113,6 +126,21 @@ export function mapCounterCloseForUi(
     startBillNo: api.startBillNo,
     endBillNo: api.endBillNo,
     staffSales: mapStaffSalesList(api.staffSales),
+    cashInOutList: Array.isArray(api.cashInOutList)
+      ? (api.cashInOutList as Record<string, unknown>[]).map((e) => {
+          if (!e || typeof e !== 'object') {
+            return { id: null, transactionType: '', amount: 0, remarks: null }
+          }
+          const m = e as Record<string, unknown>
+          return {
+            id: m.id ?? null,
+            transactionType: String(m.transactionType ?? m.transaction_type ?? ''),
+            amount: counterCloseNum(m.amount),
+            remarks: m.remarks != null ? String(m.remarks) : null,
+            createdAt: m.createdAt ?? m.created_at ?? null,
+          }
+        })
+      : [],
     totalCustomers: counterCloseInt(api.billCount),
   }
 }

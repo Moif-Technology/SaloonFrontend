@@ -37,6 +37,11 @@
         </provider>
     </application>
 
+    <!-- Sunmi built-in printer service (Android 11+ package visibility) -->
+    <queries>
+        <package android:name="woyou.aidlservice.jiuiv5" />
+    </queries>
+
     <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />

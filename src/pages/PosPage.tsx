@@ -7,6 +7,7 @@ import BottomActionBar from '../components/pos/BottomActionBar'
 import SettlementDialog from '../components/settlement/SettlementDialog'
 import JobListDialog, { type LoadedJobInvoice } from '../components/pos/JobListDialog'
 import CounterCloseDialog from '../components/pos/CounterCloseDialog'
+import CashInOutModal from '../components/pos/CashInOutModal'
 import NavDrawer from '../components/pos/NavDrawer'
 import GroupDetailsModal from '../components/pos/GroupDetailsModal'
 import SubGroupDetailsModal from '../components/pos/SubGroupDetailsModal'
@@ -26,6 +27,7 @@ import GroupListDialog from '../components/pos/GroupListDialog'
 import PosSetupDialog from '../components/pos/PosSetupDialog'
 import AppointmentListModal from '../components/pos/AppointmentListModal'
 import DiscountModal from '../components/pos/DiscountModal'
+import PriceChangeModal from '../components/pos/PriceChangeModal'
 import PrintOptionsModal, { type ReceiptType } from '../components/pos/PrintOptionsModal'
 import AppSettingsDialog from '../components/pos/AppSettingsDialog'
 import type { BillItem, HeldBill, Product, ServiceGroup } from '../types/pos'
@@ -41,7 +43,11 @@ import { useReturnToPinLogin } from '../components/SessionGate'
 import { useIdleLogoutWhenEmpty } from '../hooks/useIdleLogoutWhenEmpty'
 import { apiService } from '../api/apiService'
 import { SessionManager } from '../utils/sessionManager'
-import { buildJobSavePayload, buildOrderData } from '../utils/buildOrderData'
+import {
+  buildJobSavePayload,
+  buildOrderData,
+  mergeJobSaveLines,
+} from '../utils/buildOrderData'
 import { getPosSession } from '../utils/posSession'
 import { isPosAdmin } from '../utils/posAdmin'
 import { mapGroupRow, mapProductRow } from '../utils/catalogueMapper'
@@ -55,7 +61,8 @@ import {
   printBillFromData,
   printSettlementBill,
 } from '../lib/printBillReceipt'
-import { withReceiptPrintMeta } from '../utils/receiptSettings'
+import { receiptPrintMeta, loadReceiptSettings } from '../utils/receiptSettings'
+import { openCashDrawer, openCashDrawerIfNeeded } from '../lib/cashDrawer'
 import { applyNumericKey } from '../utils/numericInput'
 import {
   fetchAppointments,
@@ -127,6 +134,7 @@ export default function PosPage() {
   const [initialMethod, setInitialMethod] = useState<PaymentMethodLabel>('Cash')
   const [jobListOpen, setJobListOpen] = useState(false)
   const [counterCloseOpen, setCounterCloseOpen] = useState(false)
+  const [cashInOutOpen, setCashInOutOpen] = useState(false)
   const [navDrawerOpen, setNavDrawerOpen] = useState(false)
   const [groupEntryOpen, setGroupEntryOpen] = useState(false)
   const [subGroupEntryOpen, setSubGroupEntryOpen] = useState(false)
@@ -179,8 +187,13 @@ export default function PosPage() {
     draft: string
     error: string | null
   } | null>(null)
+  const [linePriceEditId, setLinePriceEditId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const selectionMode = selectedIds.size > 0
+  const linePriceEditItem = useMemo(
+    () => billItems.find((i) => i.id === linePriceEditId) ?? null,
+    [billItems, linePriceEditId],
+  )
 
   const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
   const [allProducts, setAllProducts] = useState<Product[]>([])
@@ -288,6 +301,14 @@ export default function PosPage() {
       setSalesReportKind('group')
       return
     }
+    if (item.action === 'cash-in-out' || item.id === 'cash-in-out') {
+      setCashInOutOpen(true)
+      return
+    }
+    if (item.action === 'counter-close' || item.id === 'counter-close') {
+      setCounterCloseOpen(true)
+      return
+    }
 
     showSnackbar(`${item.label} coming soon`, 'info')
   }
@@ -306,6 +327,47 @@ export default function PosPage() {
     openQtyEdit(item)
   }
 
+  function openLinePriceEdit(id: string) {
+    const item = billItems.find((i) => i.id === id)
+    if (!item) return
+    setLinePriceEditId(id)
+  }
+
+  function handleOpenPriceChange() {
+    if (billItems.length === 0) {
+      showSnackbar('Add items before changing price', 'warning')
+      return
+    }
+    if (selectedIds.size === 1) {
+      const id = selectedIds.values().next().value as string
+      openLinePriceEdit(id)
+      return
+    }
+    if (selectedIds.size > 1) {
+      showSnackbar('Select one item for price change', 'warning')
+      return
+    }
+    // No selection — use the most recently added line (top of bill)
+    openLinePriceEdit(billItems[0].id)
+  }
+
+  async function handleOpenCashDrawer() {
+    const opened = await openCashDrawer()
+    if (opened) {
+      showSnackbar('Cash drawer opened', 'success')
+    } else {
+      showSnackbar('Cash drawer only works on the POS device', 'warning')
+    }
+  }
+
+  function applyLinePriceChange(itemId: string, newPrice: number) {
+    setBillItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, price: newPrice } : item)),
+    )
+    setLinePriceEditId(null)
+    showSnackbar('Price updated', 'success')
+  }
+
   async function loadAppointments() {
     setAppointmentsLoading(true)
     try {
@@ -320,6 +382,9 @@ export default function PosPage() {
 
   useEffect(() => {
     void loadAppointments()
+    void loadReceiptSettings().catch(() => {
+      /* headings load when POS Setup opens or after next login */
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, [])
 
@@ -332,7 +397,15 @@ export default function PosPage() {
         apiService.fetchProducts({ limit: 2000 }),
       ])
 
-      const groups = groupRows
+      const groups = [...groupRows]
+        .sort((a, b) => {
+          const sa = Number(a.SortOrder ?? a.sortOrder ?? 0)
+          const sb = Number(b.SortOrder ?? b.sortOrder ?? 0)
+          if (sa !== sb) return sa - sb
+          return String(a.GroupDescription ?? '').localeCompare(
+            String(b.GroupDescription ?? ''),
+          )
+        })
         .map((row, i) => mapGroupRow(row, i))
         .filter((g) => g.id && g.id !== '0')
 
@@ -478,6 +551,7 @@ export default function PosPage() {
       next.delete(id)
       return next
     })
+    setLinePriceEditId((cur) => (cur === id ? null : cur))
   }
 
   function resetBillState() {
@@ -492,6 +566,7 @@ export default function PosPage() {
     setCustomerId(0)
     setActiveAppointmentId(null)
     setSelectedIds(new Set())
+    setLinePriceEditId(null)
   }
 
   function handleClear() {
@@ -527,16 +602,20 @@ export default function PosPage() {
   async function ensureJobSaved(
     items: BillItem[],
   ): Promise<{ jobId: number; jobNo: string | null; items: BillItem[] }> {
-    if (jobId > 0) return { jobId, jobNo, items }
-
     if (!SessionManager.accessToken) {
       throw new Error('Not logged in. Complete PIN login first so a POS token is stored.')
     }
 
-    const payload = buildJobSavePayload(items, { customerId })
+    // Create new job, or append new lines + sync discount onto a loaded job.
+    // (Previously returned early when jobId > 0, so updates were never saved.)
+    const payload = buildJobSavePayload(items, {
+      customerId,
+      jobId: jobId > 0 ? jobId : undefined,
+      discountAmount,
+    })
     const result = await apiService.saveKot(payload)
     const newId = Number(
-      result.CurrentKOTID ?? result.currentJobId ?? result.jobId ?? 0,
+      result.CurrentKOTID ?? result.currentJobId ?? result.jobId ?? jobId ?? 0,
     )
     if (!newId) {
       throw new Error(
@@ -548,21 +627,11 @@ export default function PosPage() {
     const lines = kotDetails?.data ?? (result.data as Record<string, unknown>[] | undefined)
     let nextItems = items
     if (Array.isArray(lines) && lines.length) {
-      nextItems = items.map((item, idx) => {
-        const line = lines[idx] as Record<string, unknown> | undefined
-        if (!line) return item
-        return {
-          ...item,
-          lineId: Number(line.LineID ?? line.lineId ?? line.KotChildID ?? item.lineId) || item.lineId,
-          stylistId:
-            Number(line.StylistID ?? line.stylistId ?? item.stylistId) || item.stylistId,
-          lineType: String(line.LineType ?? line.lineType ?? item.lineType ?? 'PRODUCT'),
-        }
-      })
+      nextItems = mergeJobSaveLines(items, lines as Record<string, unknown>[], newId)
       setBillItems(nextItems)
     }
 
-    const newNo = result.jobNo ? String(result.jobNo) : null
+    const newNo = result.jobNo ? String(result.jobNo) : jobNo
     setJobId(newId)
     setJobNo(newNo)
     return { jobId: newId, jobNo: newNo, items: nextItems }
@@ -610,7 +679,7 @@ export default function PosPage() {
     })
   }
 
-  /** Quick Cash / Card — settle CASH or CREDITCARD directly (no settlement screen, no print). */
+  /** Quick Cash / Card — Cash auto-prints receipt and opens drawer. */
   async function directSettle(method: 'Cash' | 'Card') {
     if (billItems.length === 0 || settleBusy) return
     setSettleBusy(true)
@@ -643,6 +712,19 @@ export default function PosPage() {
         orderData: payload,
         settleResult: result as unknown as Record<string, unknown>,
       })
+
+      if (method === 'Cash') {
+        try {
+          await printSettlementBill({
+            salesId: String(result.salesId ?? ''),
+            orderData: payload,
+            settleResult: result as unknown as Record<string, unknown>,
+          })
+        } catch (e) {
+          showSnackbar(e instanceof Error ? e.message : 'Bill print failed', 'warning')
+        }
+        await openCashDrawerIfNeeded('CASH', payload.paymentSplits)
+      }
 
       resetBillState()
 
@@ -678,18 +760,19 @@ export default function PosPage() {
     setJobId(loaded.jobId)
     setJobNo(loaded.jobNo)
     setBillStartedAt(loaded.startedAt ?? new Date())
-    setAppliedDiscount(null)
+    const disc = Number(loaded.billDiscount) || 0
+    setAppliedDiscount(disc > 0 ? { mode: 'flat', value: disc } : null)
     setOrderData(null)
     setCustomerLabel(loaded.customerName || 'Walk-in')
     setCustomerId(Number(loaded.customerId) || 0)
     showSnackbar(
-      `Loaded job${loaded.jobNo ? ` #${loaded.jobNo}` : ''} — ready to settle / print`,
+      `Loaded job${loaded.jobNo ? ` #${loaded.jobNo}` : ''} — add items / discount then Save or Settle`,
       'success',
     )
   }
 
   async function handleBillPrint() {
-    const meta = await withReceiptPrintMeta({
+    const meta = receiptPrintMeta({
       counterNo: getPosSession().counterNo,
     })
 
@@ -759,7 +842,7 @@ export default function PosPage() {
   }
 
   async function handleBillPrintLast() {
-    const meta = await withReceiptPrintMeta({
+    const meta = receiptPrintMeta({
       counterNo: getPosSession().counterNo,
     })
 
@@ -1018,6 +1101,7 @@ export default function PosPage() {
             onRemove={handleRemove}
             onClear={handleClear}
             onEditQty={handleEditQty}
+            onEditPrice={openLinePriceEdit}
             selectionMode={selectionMode}
             selectedIds={selectedIds}
             onEnterSelection={handleEnterSelection}
@@ -1060,6 +1144,8 @@ export default function PosPage() {
         <BottomActionBar
           settlementDisabled={billItems.length === 0 || settleBusy}
           onDiscount={handleOpenDiscount}
+          onPriceChange={handleOpenPriceChange}
+          onOpenCashDrawer={() => void handleOpenCashDrawer()}
           onNote={handleOpenNote}
           onCustomer={handleOpenCustomer}
           onAppointment={handleOpenAppointments}
@@ -1091,7 +1177,7 @@ export default function PosPage() {
           orderData={orderData}
           initialMethod={initialMethod}
           onClose={() => setSettleOpen(false)}
-          onSuccess={(result) => {
+          onSuccess={async (result) => {
             const printOrder = result.settledOrder
             rememberSettled({
               salesId: result.salesId,
@@ -1102,6 +1188,24 @@ export default function PosPage() {
             setSettleOpen(false)
             resetBillState()
             showSnackbar(`Settled bill #${result.billNo}`, 'success')
+
+            if (result.printReceipt) {
+              try {
+                await printSettlementBill({
+                  salesId: result.salesId,
+                  orderData: printOrder,
+                  settleResult: result as unknown as Record<string, unknown>,
+                })
+              } catch (e) {
+                showSnackbar(e instanceof Error ? e.message : 'Bill print failed', 'warning')
+              }
+            }
+
+            await openCashDrawerIfNeeded(
+              result.paymentMode ?? printOrder.paymentMode,
+              printOrder.paymentSplits,
+            )
+
             returnToPinLogin()
           }}
         />
@@ -1119,6 +1223,14 @@ export default function PosPage() {
         staffName={session.staffName || 'Admin'}
         onSelectItem={handleNavSelect}
         onCounterClose={() => setCounterCloseOpen(true)}
+        onCashInOut={() => setCashInOutOpen(true)}
+      />
+
+      <CashInOutModal
+        open={cashInOutOpen}
+        onClose={() => setCashInOutOpen(false)}
+        onSaved={(msg) => showSnackbar(msg, 'success')}
+        onError={(msg) => showSnackbar(msg, 'error')}
       />
 
       <CounterCloseDialog
@@ -1216,6 +1328,7 @@ export default function PosPage() {
         onClose={() => setCustomerSelectOpen(false)}
         onSelect={handleCustomerSelect}
         onError={(msg: string) => showSnackbar(msg, 'error')}
+        onInfo={(msg) => showSnackbar(msg, 'success')}
         selectedId={customerId > 0 ? String(customerId) : null}
       />
       <AppointmentListModal
@@ -1291,7 +1404,7 @@ export default function PosPage() {
       {priceEdit && (
         <NumericKeypadModal
           open
-          title="Price Change"
+          title="Enter Price"
           label={priceEdit.product.name}
           value={priceEdit.draft}
           error={priceEdit.error}
@@ -1317,6 +1430,12 @@ export default function PosPage() {
           onClose={cancelPriceEdit}
         />
       )}
+      <PriceChangeModal
+        open={!!linePriceEditItem}
+        item={linePriceEditItem}
+        onClose={() => setLinePriceEditId(null)}
+        onApply={applyLinePriceChange}
+      />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import {
   getEnrollment,
 } from '../../utils/deviceEnrollment'
 import { applyPinLoginSession } from '../../utils/pinLoginSession'
+import { loadReceiptSettings } from '../../utils/receiptSettings'
 
 const PIN_MIN = 4
 const PIN_MAX = 6
@@ -58,6 +59,9 @@ export default function PinLoginScreen({ onLoggedIn, onNeedsEnrollment }: Props)
           deviceToken: enrollment.deviceToken,
         })
         applyPinLoginSession(session)
+        void loadReceiptSettings().catch(() => {
+          /* bill print uses empty headings until POS Setup is saved */
+        })
         onLoggedIn()
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Invalid PIN'

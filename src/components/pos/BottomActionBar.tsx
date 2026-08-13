@@ -12,6 +12,8 @@ import {
   CreditCard,
   MoreHorizontal,
   ClipboardList,
+  Tag,
+  Archive,
 } from 'lucide-react'
 import Button from '../common/Button'
 
@@ -33,6 +35,10 @@ interface BottomActionBarProps {
   onBillPrintLast?: () => void
   /** Optional: park current bill locally */
   onHoldBill?: () => void
+  /** Change unit price of the selected bill line */
+  onPriceChange?: () => void
+  /** Manually pulse the cash drawer (Sunmi / POS device) */
+  onOpenCashDrawer?: () => void
   settlementDisabled?: boolean
 }
 
@@ -97,6 +103,8 @@ export default function BottomActionBar({
   onCard,
   onBillPrintLast,
   onHoldBill,
+  onPriceChange,
+  onOpenCashDrawer,
   settlementDisabled,
 }: BottomActionBarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
@@ -105,6 +113,16 @@ export default function BottomActionBar({
   const closeMore = () => setMoreOpen(false)
 
   const moreItems: MoreMenuItem[] = [
+    ...(onOpenCashDrawer
+      ? [
+          {
+            id: 'cash-drawer',
+            label: 'Open Cash Drawer',
+            icon: <Archive size={20} strokeWidth={2.25} />,
+            onSelect: onOpenCashDrawer,
+          } satisfies MoreMenuItem,
+        ]
+      : []),
     {
       id: 'note',
       label: 'Note',
@@ -198,10 +216,6 @@ export default function BottomActionBar({
         <ArrowRight size={26} />
       </Button>
 
-      {/* Print button — now auto-prints on Sunmi device via printReceiptOnSunmi() */}
-      {/* <Button size="secondary" icon={<Printer size={20} />} onClick={onBillPrint}>
-        {label('Print')}
-      </Button> */}
       <Button size="secondary" icon={<ClipboardList size={20} />} onClick={onJobList}>
         {label('Job List')}
       </Button>
@@ -249,6 +263,15 @@ export default function BottomActionBar({
           </>
         )}
       </div>
+
+      <Button
+        size="secondary"
+        icon={<Tag size={20} />}
+        onClick={onPriceChange}
+        disabled={!onPriceChange}
+      >
+        {label('Price Change')}
+      </Button>
     </div>
   )
 }

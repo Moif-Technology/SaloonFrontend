@@ -7,6 +7,7 @@ export type SavedCustomer = {
   mobile: string
   email?: string
   address?: string
+  code?: string
 }
 
 function toSaved(raw: Record<string, unknown>, payload: CustomerPayload): SavedCustomer {
@@ -16,6 +17,7 @@ function toSaved(raw: Record<string, unknown>, payload: CustomerPayload): SavedC
     mobile: String(raw.mobileNo ?? raw.MobileNo ?? payload.mobile).replace(/[\s-]/g, ''),
     email: payload.email?.trim() || undefined,
     address: payload.address?.trim() || undefined,
+    code: String(raw.customerCode ?? raw.CustomerCode ?? payload.code ?? '').trim() || undefined,
   }
 }
 
@@ -40,6 +42,7 @@ export async function updateCustomer(
     mobileNo: payload.mobile.replace(/[\s-]/g, ''),
     email: payload.email?.trim() || undefined,
     address: payload.address?.trim() || undefined,
+    ...(payload.code?.trim() ? { customerCode: payload.code.trim() } : {}),
   })
   return toSaved(raw, payload)
 }

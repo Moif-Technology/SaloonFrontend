@@ -21,6 +21,8 @@ export interface LoadedJobInvoice {
   customerId?: number
   items: BillItem[]
   startedAt: Date | null
+  /** Bill-level discount stored on the job (flat amount) */
+  billDiscount?: number
 }
 
 interface JobListDialogProps {
@@ -65,8 +67,10 @@ function jobNoOf(job: Record<string, unknown>) {
   return combined || '—'
 }
 
+/** Net payable (after bill discount + tax), not raw taxable/subtotal. */
 function amountOf(job: Record<string, unknown>) {
-  const raw = job.Amount ?? job.amount ?? job.totalAmount ?? 0
+  const raw =
+    job.NetAmount ?? job.netAmount ?? job.Amount ?? job.amount ?? job.totalAmount ?? 0
   const n = typeof raw === 'number' ? raw : Number(raw)
   return Number.isFinite(n) ? n : 0
 }
@@ -171,12 +175,17 @@ export function mapJobDetailsToInvoice(
     }
   })
 
+  const billDiscount = Number(
+    master.BillDiscount ?? master.billDiscount ?? master.bill_discount ?? 0,
+  )
+
   return {
     jobId,
     jobNo,
     customerName,
     customerId,
     items,
+    billDiscount: Number.isFinite(billDiscount) && billDiscount > 0 ? billDiscount : 0,
     startedAt:
       startedAt && !Number.isNaN(startedAt.getTime()) ? startedAt : null,
   }
@@ -459,7 +468,7 @@ export default function JobListDialog({ open, onClose, onInvoice }: JobListDialo
                       ['Customer', 'left', ''],
                       ['Mobile', 'left', 'w-[110px]'],
                       ['Stylist', 'left', ''],
-                      ['Amount', 'right', 'w-[90px]'],
+                      ['Net Amt', 'right', 'w-[90px]'],
                       ['Print', 'center', 'w-[80px]'],
                       ['Invoice', 'center', 'w-[96px]'],
                     ] as const

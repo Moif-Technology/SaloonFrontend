@@ -367,8 +367,7 @@ export default function GroupDetailsModal({
                 htmlFor="group-sort"
                 className="text-sm font-semibold text-salon-text"
               >
-                Sort order{' '}
-                <span className="font-normal text-salon-muted">(optional)</span>
+                Display order
               </label>
               <input
                 id="group-sort"
@@ -381,8 +380,11 @@ export default function GroupDetailsModal({
                   updateField('sortOrder', v === '' ? undefined : Number(v))
                 }}
                 className={inputClass}
-                placeholder="0"
+                placeholder="e.g. 1"
               />
+              <p className="mt-1.5 text-xs font-medium text-salon-muted">
+                Lower numbers appear first on POS / Counter.
+              </p>
             </div>
 
             <label className="flex h-12 cursor-pointer items-center gap-3 rounded-xl border-2 border-salon-border px-4">

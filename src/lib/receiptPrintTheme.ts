@@ -1,27 +1,84 @@
 /**
- * Shared 80mm thermal receipt theme — ported from Counter-pos receiptPrintTheme.js
+ * Shared 80mm thermal receipt theme.
+ * Font matches HMS dummy bill (Mainfrm.Print_PrintPage):
+ *   BillFont = "Courier New"
+ *   myFont  = 10pt  |  myFont2 = 9pt  |  myFont3 = 8pt
+ *   heading1 / myFont4 ≈ 14pt, title ≈ 13pt, Arabic ≈ 14pt
+ * Weight 700 on every line — regular (400) prints dim/gray on Sunmi thermal.
  */
 
 export const BILL_FONT = '"Courier New", Courier, monospace'
 export const RECEIPT_PAGE_WIDTH = '80mm'
 
+/** Sunmi 80mm thermal capture width (dots). */
+export const RECEIPT_BITMAP_WIDTH = 576
+
+/** CSS px ≈ VB pt × 2.4 so 10pt Courier stays readable on 80mm thermal. */
 export const RECEIPT_FONT = {
-  body: 14,
-  storeName: 18,
-  meta: 13,
-  title: 14,
-  titleAr: 13,
-  row: 13,
-  rowSmall: 12,
-  items: 13,
-  itemsHead: 12,
-  itemSub: 12,
-  total: 15,
-  taxHead: 13,
-  taxTable: 12,
-  footer: 14,
-  printerNote: 11,
+  body: 24,
+  storeName: 36,
+  heading1: 36,
+  heading2: 22,
+  heading3: 20,
+  heading4: 20,
+  heading5: 18,
+  meta: 22,
+  title: 26,
+  titleAr: 26,
+  row: 22,
+  rowSmall: 20,
+  items: 22,
+  itemsHead: 22,
+  itemSub: 20,
+  total: 26,
+  taxHead: 22,
+  taxTable: 20,
+  footer: 22,
+  printerNote: 18,
 }
+
+/** Bitmap text sizes for ESC/command print — largest (H1) → smallest (H5). */
+export const RECEIPT_HEADING_BITMAP = {
+  h1: 42,
+  h2: 28,
+  h3: 26,
+  h4: 24,
+  h5: 22,
+  trn: 24,
+  footer: 26,
+  body: 24,
+}
+
+/** Sunmi HTML capture: same bold black weight on every line (no dim regular / AA text). */
+export const RECEIPT_THERMAL_HTML_CSS = `
+  html, body {
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    scrollbar-width: none !important;
+  }
+  ::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+  html, body, table, thead, tbody, tr, div, span, td, th, p, b, strong {
+    color: #000 !important;
+    font-weight: 700 !important;
+    -webkit-font-smoothing: none !important;
+    -moz-osx-font-smoothing: unset !important;
+    font-smooth: never !important;
+    text-rendering: geometricPrecision !important;
+    -webkit-text-stroke: 0.3px #000;
+  }
+  body, table, div, span, td, th, p,
+  .en, .th-en, .xr-lbl, .xr-val, .xr-row, .lbl, .val,
+  .row, .row-left, .row-right, .pair-row, .pair, .title-row, .bi-lbl, .footer {
+    font-family: "Courier New", Courier, monospace !important;
+    font-weight: 700 !important;
+  }
+  .th-ar, .title-ar, .desc-ar, .bi-lbl .ar, .tax-head-ar, .draft-banner-ar {
+    font-family: Tahoma, "Segoe UI", Arial, sans-serif !important;
+    font-weight: 700 !important;
+    -webkit-font-smoothing: none !important;
+    font-smooth: never !important;
+  }
+`
 
 export function escReceipt(s: unknown) {
   return String(s ?? '')
@@ -61,6 +118,7 @@ export const RECEIPT_LABELS = {
   discount: { en: 'DISCOUNT', ar: 'الخصم' },
   taxableAfterDisc: { en: 'TAXABLE AFTER DISC', ar: 'الخاضع للضريبة بعد الخصم' },
   roundOff: { en: 'ROUND OFF', ar: 'فرق التقريب' },
+  tip: { en: 'TIP', ar: 'إكرامية' },
 }
 
 function receiptTh(label: { en: string; ar: string }, alignClass = '') {
@@ -69,6 +127,53 @@ function receiptTh(label: { en: string; ar: string }, alignClass = '') {
 
 export function buildReceiptBiLabel(label: { en: string; ar: string }, suffix = '') {
   return `<span class="bi-lbl"><span class="en">${label.en}${suffix}</span><span class="ar">${label.ar}</span></span>`
+}
+
+export function hasCompanyTaxNumber(trn?: unknown) {
+  const t = String(trn ?? '').trim()
+  if (!t) return false
+  const lower = t.toLowerCase()
+  return lower !== '0' && lower !== 'null' && lower !== 'n/a' && lower !== '-'
+}
+
+/** Tax Invoice + Arabic when company TRN exists; otherwise Invoice + Arabic. */
+export function receiptInvoiceTitles(opts: { trn?: unknown; draft?: boolean } = {}) {
+  if (opts.draft) return { en: 'Draft Copy', ar: 'مسودة' }
+  if (hasCompanyTaxNumber(opts.trn)) return { en: 'Tax Invoice', ar: 'فاتورة ضريبية' }
+  return { en: 'Invoice', ar: 'فاتورة' }
+}
+
+export type ReceiptStoreHeadings = {
+  heading1?: string
+  heading2?: string
+  heading3?: string
+  heading4?: string
+  heading5?: string
+  trn?: string
+  branch?: string
+  phone?: string
+}
+
+/** POS Setup headings 1–5 (decreasing size) + TRN for bill / draft / counter close. */
+export function buildReceiptStoreHeaderHtml(
+  headings: ReceiptStoreHeadings,
+  esc = escReceipt,
+) {
+  const rows: Array<{ text: string; cls: string }> = []
+  const push = (text: string | undefined, cls: string) => {
+    const t = String(text ?? '').trim()
+    if (t) rows.push({ text: t, cls })
+  }
+  push(headings.heading1, 'store-heading-1')
+  push(headings.heading2, 'store-heading-2')
+  push(headings.heading3, 'store-heading-3')
+  push(headings.heading4, 'store-heading-4')
+  push(headings.heading5, 'store-heading-5')
+  push(headings.trn ? `TRN: ${headings.trn}` : '', 'store-trn')
+  if (!rows.length) {
+    return `<div class="store-heading-1">${esc('MOIF TECHNOLOGY')}</div>`
+  }
+  return rows.map((r) => `<div class="${r.cls}">${esc(r.text)}</div>`).join('\n  ')
 }
 
 export function buildReceiptItemsTableHeadHtml({ withPrice = true } = {}) {
@@ -91,8 +196,8 @@ export function buildReceiptItemsTableHeadHtml({ withPrice = true } = {}) {
 export function buildReceiptTotalLineHtml(amount: number, fmtMoney: (n: number) => string) {
   const L = RECEIPT_LABELS.grandTotal
   return `<div class="total-line">
-    <span>${buildReceiptBiLabel(L, ' :')}</span>
-    <span>${fmtMoney(amount)}</span>
+    <span class="lbl">${buildReceiptBiLabel(L, ' :')}</span>
+    <span class="val">${fmtMoney(amount)}</span>
   </div>`
 }
 
@@ -109,10 +214,19 @@ export function buildReceiptBillSummaryHtml(p: {
   billAmount: number
   paidAmount: number
   balAmount: number
+  tipTotal?: number
   fmtMoney: (n: number) => string
   fmtQty: (n: number) => string
 }) {
   const L = RECEIPT_LABELS
+  const tip = Number(p.tipTotal) || 0
+  const tipLine =
+    tip > 0.001
+      ? `<div class="pair-row">
+    <span></span>
+    <span class="pair">${buildReceiptBiLabel(L.tip, ` : ${p.fmtMoney(tip)}`)}</span>
+  </div>`
+      : ''
   return `<div class="pair-row">
     <span>${buildReceiptBiLabel(L.items, ` : ${p.itemCount}`)}</span>
     <span class="pair">${buildReceiptBiLabel(L.billAmount, ` : ${p.fmtMoney(p.billAmount)}`)}</span>
@@ -121,6 +235,7 @@ export function buildReceiptBillSummaryHtml(p: {
     <span>${buildReceiptBiLabel(L.qtyTotal, ` : ${p.fmtQty(p.qtyTotal)}`)}</span>
     <span class="pair">${buildReceiptBiLabel(L.paidAmount, ` : ${p.fmtMoney(p.paidAmount)}`)}</span>
   </div>
+  ${tipLine}
   <div class="pair-row">
     <span></span>
     <span class="pair">${buildReceiptBiLabel(L.balAmount, ` : ${p.fmtMoney(p.balAmount)}`)}</span>
@@ -239,10 +354,10 @@ export function buildReceiptBarcodeBlockHtml(p: {
 
 export const RECEIPT_BARCODE_EXTRA_CSS = `
   .barcode-block { margin: 8px 0 4px; }
-  .barcode-label { font-size: 13px; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.3px; }
+  .barcode-label { font-size: ${RECEIPT_FONT.footer}px; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.3px; }
   .barcode-svg { display: flex; justify-content: center; margin: 4px 0; overflow: visible; }
   .barcode-svg svg { max-width: 72mm; height: auto; }
-  .barcode-text { font-size: 16px; font-weight: 700; letter-spacing: 2px; margin-top: 4px; }
+  .barcode-text { font-size: ${RECEIPT_FONT.row}px; font-weight: 700; letter-spacing: 2px; margin-top: 4px; }
   @media print {
     .barcode-svg svg {
       width: 68mm !important;
@@ -292,27 +407,80 @@ export function buildReceiptBaseCss(opts: { includePage?: boolean } = {}) {
       line-height: 1.2;
       margin-bottom: 5px;
     }
+    .store-heading-1 {
+      font-size: ${f.heading1}px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      text-align: center;
+      line-height: 1.2;
+      margin: 0 0 4px;
+    }
+    .store-heading-2 {
+      font-size: ${f.heading2}px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.2;
+      margin: 2px 0;
+    }
+    .store-heading-3 {
+      font-size: ${f.heading3}px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.2;
+      margin: 2px 0;
+    }
+    .store-heading-4 {
+      font-size: ${f.heading4}px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.2;
+      margin: 2px 0;
+    }
+    .store-heading-5 {
+      font-size: ${f.heading5}px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.2;
+      margin: 2px 0;
+    }
+    .store-contact {
+      font-size: ${f.heading3}px;
+      font-weight: 700;
+      text-align: center;
+      margin: 2px 0;
+    }
+    .store-trn {
+      font-size: ${f.meta}px;
+      font-weight: 700;
+      text-align: center;
+      margin: 3px 0 2px;
+    }
     .center { text-align: center; }
     .meta-line { text-align: center; font-size: ${f.meta}px; font-weight: 700; margin: 2px 0; }
     .dash { border: none; border-top: 2px dashed #000; margin: 7px 0; }
     .title-row {
       display: flex; justify-content: space-between; align-items: center;
       font-weight: 700; font-size: ${f.title}px; margin: 5px 0;
-      flex-wrap: nowrap; white-space: nowrap;
+      flex-wrap: nowrap; white-space: nowrap; overflow: hidden; gap: 8px;
     }
-    .title-ar { font-size: ${f.titleAr}px; font-weight: 700; direction: rtl; flex-shrink: 0; font-family: "Segoe UI", Tahoma, Arial, sans-serif; }
-    .th-en { line-height: 1.1; }
+    .title-row > span:first-child { flex: 0 0 auto; }
+    .title-ar {
+      font-size: ${f.titleAr}px; font-weight: 700; direction: rtl; flex: 0 0 auto;
+      font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+    }
+    .th-en { line-height: 1.1; font-weight: 700; }
     .th-ar, .bi-lbl .ar, .tax-head-ar {
-      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-      font-size: 10px; font-weight: 700; direction: rtl; line-height: 1.15;
+      font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+      font-size: ${f.rowSmall}px; font-weight: 700; direction: rtl; line-height: 1.2;
     }
     .th-ar { margin-top: 1px; }
     table.items th.c .th-ar { text-align: center; }
     table.items th.r .th-ar { text-align: left; }
-    table.tax th .th-ar { font-size: 9px; text-align: left; }
+    table.tax th .th-ar { font-size: ${f.itemSub}px; text-align: left; }
     table.tax th.r .th-ar { text-align: left; }
-    .bi-lbl { display: inline-flex; flex-direction: column; vertical-align: top; line-height: 1.1; }
-    .bi-lbl .en { white-space: nowrap; }
+    .bi-lbl { display: inline-flex; flex-direction: column; vertical-align: top; line-height: 1.1; font-weight: 700; }
+    .bi-lbl .en { white-space: nowrap; font-weight: 700; }
     .tax-head-ar { text-align: center; margin-top: 2px; font-size: ${f.itemSub}px; }
     .row {
       display: flex; justify-content: space-between; align-items: center;
@@ -322,8 +490,8 @@ export function buildReceiptBaseCss(opts: { includePage?: boolean } = {}) {
     }
     .row.addr { align-items: flex-start; white-space: normal; }
     .row .lbl { font-weight: 700; flex-shrink: 0; }
-    .row-left { flex: 0 1 auto; min-width: 0; white-space: nowrap; }
-    .row-right { flex: 0 0 auto; text-align: right; white-space: nowrap; margin-left: auto; }
+    .row-left { flex: 0 1 auto; min-width: 0; white-space: nowrap; font-weight: 700; }
+    .row-right { flex: 0 0 auto; text-align: right; white-space: nowrap; margin-left: auto; font-weight: 700; }
     .row .val { text-align: right; flex: 0 0 auto; font-weight: 700; white-space: nowrap; }
     .pair-row {
       display: flex; justify-content: space-between; align-items: baseline;
@@ -333,7 +501,7 @@ export function buildReceiptBaseCss(opts: { includePage?: boolean } = {}) {
     .pair-row.small { font-size: ${f.rowSmall}px; font-weight: 700; padding-left: 8px; }
     .pair { display: flex; gap: 4px; white-space: nowrap; }
     .pair .lbl { font-weight: 700; }
-    .pair .val { font-weight: 700; }
+    .pair .val, .val { font-weight: 700; }
     table.items { width: 100%; border-collapse: collapse; margin: 5px 0; font-size: ${f.items}px; font-weight: 700; }
     table.items th {
       text-align: left; font-weight: 700; font-size: ${f.itemsHead}px;
@@ -344,7 +512,7 @@ export function buildReceiptBaseCss(opts: { includePage?: boolean } = {}) {
     table.items td { padding: 3px 0; vertical-align: top; font-weight: 700; }
     table.items .desc { font-weight: 700; max-width: 42mm; word-wrap: break-word; }
     table.items .desc-ar {
-      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      font-family: Tahoma, "Segoe UI", Arial, sans-serif;
       font-size: ${f.itemSub}px; font-weight: 700; direction: rtl; text-align: right;
       margin-top: 2px; line-height: 1.25; word-wrap: break-word;
     }
@@ -358,9 +526,11 @@ export function buildReceiptBaseCss(opts: { includePage?: boolean } = {}) {
       display: flex; justify-content: space-between;
       font-weight: 700; font-size: ${f.total}px; margin: 5px 0;
     }
+    .total-line .val { font-weight: 700; }
     .tax-head { text-align: center; font-weight: 700; font-size: ${f.taxHead}px; margin: 7px 0 5px; }
     table.tax { width: 100%; border-collapse: collapse; font-size: ${f.taxTable}px; font-weight: 700; margin-bottom: 7px; }
-    table.tax th, table.tax td { text-align: right; padding: 3px 4px; font-weight: 700; }
+    table.tax th { text-align: right; padding: 3px 4px; font-weight: 700; }
+    table.tax td { text-align: right; padding: 3px 4px; font-weight: 700; }
     table.tax th:first-child, table.tax td:first-child { text-align: left; }
     table.tax thead tr { border-bottom: 1px dotted #000; }
     table.tax tbody tr { border-bottom: none; }

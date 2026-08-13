@@ -105,15 +105,33 @@ export function buildOrderData(opts: {
   }
 }
 
-/** Payload for POST /salon-pos/job/save before settle (unsaved cart path). */
+function isSavedJobLine(item: BillItem) {
+  return Number(item.lineId) > 0
+}
+
+/** Payload for POST /salon-pos/job/save before settle (create or append). */
 export function buildJobSavePayload(
   billItems: BillItem[],
-  opts?: { taxRate?: number; customerId?: number },
+  opts?: {
+    taxRate?: number
+    customerId?: number
+    /** Existing open job — append new lines only + sync discount */
+    jobId?: number
+    discountAmount?: number
+  },
 ) {
   const session = getPosSession()
   const taxRate = opts?.taxRate ?? DEFAULT_TAX_RATE
   const customerId = Number(opts?.customerId) > 0 ? Number(opts?.customerId) : 0
-  const items = billItems.map((item) => {
+  const existingJobId = Number(opts?.jobId) > 0 ? Number(opts?.jobId) : 0
+  const discountAmount = Math.max(0, Number(opts?.discountAmount) || 0)
+
+  // Append path: only send lines that are not yet on the job (no lineId).
+  // Sending existing lines again would duplicate them on the server.
+  const sourceItems =
+    existingJobId > 0 ? billItems.filter((item) => !isSavedJobLine(item)) : billItems
+
+  const items = sourceItems.map((item) => {
     const qty = item.qty
     const rate = item.price
     const taxP = lineTaxRate(item, taxRate)
@@ -145,7 +163,7 @@ export function buildJobSavePayload(
   })
   const sub = items.reduce((s, i) => s + Number(i.SubTotal), 0)
   const tax = items.reduce((s, i) => s + Number(i.TaxAmount), 0)
-  return {
+  const payload: Record<string, unknown> = {
     StationID: session.stationId,
     stationId: session.stationId,
     PrimaryStylistID: session.staffId,
@@ -155,15 +173,74 @@ export function buildJobSavePayload(
     CustomerID: customerId,
     customerId,
     mfCustomerID: customerId,
-    txtDiscount: 0,
+    txtDiscount: discountAmount,
+    BillDiscount: discountAmount,
+    billDiscount: discountAmount,
     lblSubTotalAmt: sub,
     lblTax1Total: tax,
     lblRound: 0,
-    lblBillTotal: sub + tax,
+    lblBillTotal: Math.max(sub + tax - discountAmount, 0),
     txtNoofCustomer: 0,
     txtRemarks: '',
     btnname: 'JobSave',
     Items: items,
     items,
   }
+  if (existingJobId > 0) {
+    payload.CurrentJobID = existingJobId
+    payload.currentJobId = existingJobId
+    payload.CurrentKOTID = existingJobId
+    payload.currentKotId = existingJobId
+  }
+  return payload
+}
+
+/** Map job/save response lines onto the open bill (keeps client row ids where possible). */
+export function mergeJobSaveLines(
+  current: BillItem[],
+  serverLines: Record<string, unknown>[],
+  jobId: number,
+): BillItem[] {
+  if (!Array.isArray(serverLines) || !serverLines.length) return current
+
+  const unused = [...current]
+  return serverLines.map((line, idx) => {
+    const lineId = Number(line.LineID ?? line.lineId ?? line.KotChildID ?? 0) || undefined
+    const productId = Number(line.ProductID ?? line.productId ?? 0) || 0
+    const qty = Number(line.Qty ?? line.qty ?? 0) || 0
+    const price = Number(line.UnitPrice ?? line.unitPrice ?? 0) || 0
+    const stylistId = Number(line.StylistID ?? line.stylistId ?? 0) || undefined
+    const groupId = Number(line.GroupID ?? line.groupId ?? 0) || 0
+    const taxRate = Number(line.Tax1RateC ?? line.tax1RateC ?? 5) || 5
+    const lineType = String(line.LineType ?? line.lineType ?? 'PRODUCT')
+    const name = String(line.ShortDescription ?? line.shortDescription ?? 'Item')
+
+    let matchIdx = -1
+    if (lineId) {
+      matchIdx = unused.findIndex((i) => Number(i.lineId) === lineId)
+    }
+    if (matchIdx < 0) {
+      matchIdx = unused.findIndex(
+        (i) =>
+          !(Number(i.lineId) > 0) &&
+          Number(i.productId) === productId &&
+          Number(i.qty) === qty &&
+          Number(i.price) === price,
+      )
+    }
+    const prev = matchIdx >= 0 ? unused.splice(matchIdx, 1)[0] : null
+
+    return {
+      id: prev?.id ?? `job-${jobId}-line-${lineId ?? idx}`,
+      productId: productId || prev?.productId || 0,
+      name: name || prev?.name || 'Item',
+      qty: qty || prev?.qty || 1,
+      price: price || prev?.price || 0,
+      groupId: groupId || prev?.groupId || 0,
+      taxRate: taxRate || prev?.taxRate || 5,
+      lineId,
+      stylistId: stylistId ?? prev?.stylistId,
+      lineType: lineType || prev?.lineType || 'PRODUCT',
+    }
+  })
 }

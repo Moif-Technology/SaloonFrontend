@@ -13,6 +13,7 @@ interface BillItemRowProps {
   onDecrement: (id: string) => void
   onRemove: (id: string) => void
   onEditQty?: (id: string) => void
+  onEditPrice?: (id: string) => void
   selectionMode?: boolean
   selected?: boolean
   onEnterSelection?: (id: string) => void
@@ -25,6 +26,7 @@ export default function BillItemRow({
   onDecrement,
   onRemove,
   onEditQty,
+  onEditPrice,
   selectionMode = false,
   selected = false,
   onEnterSelection,
@@ -132,9 +134,18 @@ export default function BillItemRow({
       </div>
 
       <div className="text-right">
-        <p className="font-medium tabular-nums text-salon-text text-sm sm:text-base">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onEditPrice?.(item.id)
+          }}
+          disabled={selectionMode}
+          className="rounded-md px-1 py-0.5 font-medium tabular-nums text-salon-text text-sm hover:bg-black/5 sm:text-base disabled:opacity-50"
+          aria-label={`Edit price ${formatCurrency(item.price)}`}
+        >
           {formatCurrency(item.price)}
-        </p>
+        </button>
       </div>
 
       <div className="text-right">

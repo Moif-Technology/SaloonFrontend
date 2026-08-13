@@ -19,6 +19,7 @@ interface CustomerSelectDialogProps {
   onClose: () => void
   onSelect: (customer: SelectedPosCustomer | null) => void
   onError?: (message: string) => void
+  onInfo?: (message: string) => void
   /** Current selection highlight (optional) */
   selectedId?: string | null
 }
@@ -52,6 +53,7 @@ export default function CustomerSelectDialog({
   onClose,
   onSelect,
   onError,
+  onInfo,
   selectedId = null,
 }: CustomerSelectDialogProps) {
   const [search, setSearch] = useState('')
@@ -66,9 +68,11 @@ export default function CustomerSelectDialog({
   const inputRef = useRef<HTMLInputElement>(null)
   const loadSeqRef = useRef(0)
   const onErrorRef = useRef(onError)
+  const onInfoRef = useRef(onInfo)
   const onCloseRef = useRef(onClose)
   const onSelectRef = useRef(onSelect)
   onErrorRef.current = onError
+  onInfoRef.current = onInfo
   onCloseRef.current = onClose
   onSelectRef.current = onSelect
 
@@ -263,6 +267,7 @@ export default function CustomerSelectDialog({
         onSaved={(customer) => {
           setEntryOpen(false)
           setEntryPrefill(null)
+          onInfoRef.current?.('Customer saved')
           const raw = (customer ?? {}) as Record<string, unknown>
           const id = String(raw.id ?? raw.customerId ?? raw.CustomerID ?? '').trim()
           const name = String(raw.name ?? raw.customerName ?? raw.CustomerName ?? '').trim()

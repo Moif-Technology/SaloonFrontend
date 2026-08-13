@@ -57,13 +57,18 @@ export function isMultiPaymentMode(mode: unknown): boolean {
   return normalizeBillPaymentMode(mode) === PM.MULTIPAYMENT
 }
 
-/** True if bill is multi/split — from header mode OR presence of split rows. */
+/**
+ * True if bill is multi/split payment.
+ * Header MULTIPAYMENT always counts; otherwise need 2+ tender rows
+ * (single CASH/CARD bills also store one sales_payment_split row).
+ */
 export function isSplitBill(
   mode: unknown,
   splits?: Array<{ payMode?: string; amount?: number }> | null,
 ): boolean {
   if (isMultiPaymentMode(mode)) return true
-  return Array.isArray(splits) && splits.some((s) => Number(s.amount) > 0)
+  const active = (splits ?? []).filter((s) => Number(s.amount) > 0)
+  return active.length >= 2
 }
 
 /** Friendly label for list / detail header. */

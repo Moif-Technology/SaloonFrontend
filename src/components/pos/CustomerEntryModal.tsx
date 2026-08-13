@@ -22,6 +22,7 @@ export type InitialCustomer = {
   mobile: string
   email?: string
   address?: string
+  code?: string
 }
 
 interface CustomerEntryModalProps {
@@ -222,6 +223,7 @@ export default function CustomerEntryModal({
         mobile: form.mobile,
         email: form.email.trim() || undefined,
         address: form.address.trim() || undefined,
+        code: initialCustomer?.code?.trim() || undefined,
       }
       const customer =
         isEdit && initialCustomer

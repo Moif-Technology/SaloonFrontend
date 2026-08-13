@@ -1,5 +1,5 @@
-import { registerPlugin } from '@capacitor/core'
-import type { Plugin } from '@capacitor/core'
+import { Capacitor, registerPlugin, type Plugin } from '@capacitor/core'
+import { RECEIPT_THERMAL_HTML_CSS } from './receiptPrintTheme'
 
 export interface SunmiPrinterPlugin extends Plugin {
   /**
@@ -31,14 +31,15 @@ export interface SunmiPrinterPlugin extends Plugin {
 const SunmiPrinter = registerPlugin<SunmiPrinterPlugin>('SunmiPrinter')
 
 /**
- * Check if running on Sunmi device
+ * Sunmi D3 Mini / built-in printer — true on Capacitor Android APK.
  */
 export function isSunmiDevice(): boolean {
+  if (Capacitor.getPlatform() === 'android') return true
   if (typeof window === 'undefined') return false
   return (
-    /Sunmi/.test(navigator.userAgent) ||
-    (window as any).sunmiPrinter !== undefined ||
-    (window as any).__SUNMI_DEVICE__ === true
+    /Sunmi/i.test(navigator.userAgent) ||
+    (window as unknown as { sunmiPrinter?: unknown }).sunmiPrinter !== undefined ||
+    (window as unknown as { __SUNMI_DEVICE__?: boolean }).__SUNMI_DEVICE__ === true
   )
 }
 
@@ -51,7 +52,9 @@ export async function printReceiptOnSunmi(html: string): Promise<void> {
   }
 
   try {
-    await SunmiPrinter.printHtml({ html })
+    await SunmiPrinter.printHtml({
+      html: String(html ?? '').replace('</head>', `<style>${RECEIPT_THERMAL_HTML_CSS}</style></head>`),
+    })
   } catch (err) {
     console.error('Sunmi print error:', err)
     throw err
@@ -67,8 +70,9 @@ export async function checkSunmiPrinterStatus(): Promise<boolean> {
   }
 
   try {
-    const result = await SunmiPrinter.getPrinterStatus()
-    return result.connected
+    const { checkAndroidPrinterStatus } = await import('./androidPrinter')
+    const result = await checkAndroidPrinterStatus()
+    return result.available
   } catch (err) {
     console.error('Sunmi status check error:', err)
     return false

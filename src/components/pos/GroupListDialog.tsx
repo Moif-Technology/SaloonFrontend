@@ -1,5 +1,6 @@
 /**
- * Group List — search, New / Edit. Double-click opens Group Entry.
+ * Group List — search, New / Edit.
+ * POS / Counter tile order comes from Group Entry → Display order.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FolderPlus, Pencil, Plus, RefreshCw, Search, X } from 'lucide-react'
@@ -74,7 +75,6 @@ export default function GroupListDialog({
     }
   }, [])
 
-  // Reset + load only when dialog opens — not when parent re-renders
   useEffect(() => {
     if (!open) return
     setSearch('')
@@ -197,7 +197,7 @@ export default function GroupListDialog({
               <table className="w-full border-collapse text-sm">
                 <thead className="sticky top-0 z-10 bg-[#F7F5F6]">
                   <tr>
-                    {['#', 'Code', 'Name', 'Status'].map((h) => (
+                    {['#', 'Code', 'Name', 'Order', 'Status'].map((h) => (
                       <th
                         key={h}
                         className="border-b border-salon-border px-3 py-2.5 text-left text-[11px] font-extrabold uppercase tracking-wide text-salon-muted"
@@ -222,8 +222,13 @@ export default function GroupListDialog({
                         ].join(' ')}
                       >
                         <td className="px-3 py-2.5 tabular-nums text-salon-muted">{i + 1}</td>
-                        <td className="px-3 py-2.5 font-semibold tabular-nums">{row.code || '—'}</td>
+                        <td className="px-3 py-2.5 font-semibold tabular-nums">
+                          {row.code || '—'}
+                        </td>
                         <td className="px-3 py-2.5 font-semibold text-salon-text">{row.name}</td>
+                        <td className="px-3 py-2.5 tabular-nums font-semibold text-salon-primary">
+                          {row.sortOrder ?? '—'}
+                        </td>
                         <td className="px-3 py-2.5">
                           <span
                             className={[
@@ -245,7 +250,7 @@ export default function GroupListDialog({
           </div>
 
           <footer className="shrink-0 border-t border-salon-border px-4 py-2 text-xs text-salon-muted">
-            Double-click a row (or select + Edit) to open Group Entry. Uncheck Active to hide from POS.
+            Set Display order in Group Entry — lower numbers appear first on POS / Counter.
           </footer>
         </div>
       </div>

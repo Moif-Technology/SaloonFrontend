@@ -29,10 +29,10 @@ const CSS_VARS: CSSProperties = {
   ['--surface' as string]: '#fff',
   ['--surface-2' as string]: '#edece8',
   ['--border' as string]: '#dbd9d2',
-  ['--text-1' as string]: '#1a1a1a',
-  ['--text-2' as string]: '#4a4a4a',
-  ['--text-3' as string]: '#7a7a7a',
-  ['--text-4' as string]: '#a3a3a3',
+  ['--text-1' as string]: '#111111',
+  ['--text-2' as string]: '#333333',
+  ['--text-3' as string]: '#555555',
+  ['--text-4' as string]: '#777777',
   ['--shadow-sm' as string]: '0 1px 3px rgba(0,0,0,0.08)',
 }
 
@@ -273,8 +273,9 @@ export default function MultiPayDialog({
       setError(`Split not completed. Balance: ${fmtMoney(remaining)}`)
       return
     }
+    // Parent onConfirm closes the dialog — do not call onClose() here.
+    // Calling both races: onClose still sees empty paymentSplits and wipes tips/splits.
     onConfirm(rowsToSplits(rows))
-    onClose()
   }
 
   const press = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -348,9 +349,9 @@ export default function MultiPayDialog({
               <div>
                 <p
                   style={{
-                    fontSize: 10,
-                    color: 'rgba(255,255,255,0.55)',
-                    fontWeight: 600,
+                    fontSize: 12,
+                    color: 'rgba(255,255,255,0.75)',
+                    fontWeight: 700,
                     letterSpacing: 0.8,
                     textTransform: 'uppercase',
                     margin: 0,
@@ -358,7 +359,7 @@ export default function MultiPayDialog({
                 >
                   Settlement
                 </p>
-                <p style={{ fontSize: 15, fontWeight: 800, color: '#fff', lineHeight: 1.2, margin: 0 }}>
+                <p style={{ fontSize: 20, fontWeight: 800, color: '#fff', lineHeight: 1.2, margin: 0 }}>
                   Split Payment
                 </p>
               </div>
@@ -393,20 +394,20 @@ export default function MultiPayDialog({
               <div
                 key={chip.label}
                 style={{
-                  padding: '8px 14px',
+                  padding: '10px 16px',
                   borderRadius: 8,
                   background: 'rgba(255,255,255,0.12)',
                   border: '1px solid rgba(255,255,255,0.2)',
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: 700,
-                  color: 'rgba(255,255,255,0.85)',
+                  color: 'rgba(255,255,255,0.95)',
                 }}
               >
                 {chip.label}{' '}
                 <span
                   style={{
                     fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 16,
+                    fontSize: 19,
                     fontWeight: 800,
                     color: chip.accent ? '#fecaca' : '#fff',
                   }}
@@ -429,13 +430,14 @@ export default function MultiPayDialog({
                   type="button"
                   onClick={() => setPayMode(m.key)}
                   style={{
-                    height: 40,
+                    height: 46,
                     borderRadius: 10,
                     border: `1.5px solid ${active ? m.border : 'var(--border)'}`,
                     background: active ? m.bg : 'var(--surface)',
-                    color: active ? m.color : 'var(--text-3)',
-                    fontSize: 11,
+                    color: active ? m.color : 'var(--text-2)',
+                    fontSize: 14,
                     fontWeight: 800,
+                    letterSpacing: 0.3,
                     cursor: 'pointer',
                     transition: 'all 0.12s',
                     boxShadow: active ? 'var(--shadow-sm)' : 'none',
@@ -480,12 +482,12 @@ export default function MultiPayDialog({
                 onMouseUp={release}
                 style={{
                   marginTop: 4,
-                  height: 42,
+                  height: 46,
                   borderRadius: 10,
                   border: 'none',
                   background: `linear-gradient(135deg, ${BRAND} 0%, ${BRAND2} 100%)`,
                   color: '#fff',
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: 800,
                   letterSpacing: 0.4,
                   cursor: 'pointer',
@@ -502,13 +504,13 @@ export default function MultiPayDialog({
                 onClick={useRemaining}
                 style={{
                   width: '100%',
-                  height: 36,
+                  height: 40,
                   marginBottom: 8,
                   borderRadius: 10,
                   border: '1.5px solid var(--green-border)',
                   background: 'var(--green-bg)',
                   color: 'var(--green)',
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: 800,
                   cursor: 'pointer',
                 }}
@@ -551,18 +553,18 @@ export default function MultiPayDialog({
               background: 'var(--surface)',
             }}
           >
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
                   {['#', 'Ref', 'Mode', 'Amount', 'Tip'].map((h) => (
                     <th
                       key={h}
                       style={{
-                        padding: '8px 10px',
+                        padding: '10px 12px',
                         textAlign: 'left',
                         fontWeight: 800,
-                        fontSize: 10,
-                        color: 'var(--text-3)',
+                        fontSize: 13,
+                        color: 'var(--text-2)',
                         textTransform: 'uppercase',
                         letterSpacing: 0.4,
                       }}
@@ -577,7 +579,13 @@ export default function MultiPayDialog({
                   <tr>
                     <td
                       colSpan={5}
-                      style={{ padding: 28, textAlign: 'center', color: 'var(--text-4)', fontWeight: 600 }}
+                      style={{
+                        padding: 28,
+                        textAlign: 'center',
+                        color: 'var(--text-3)',
+                        fontWeight: 700,
+                        fontSize: 14,
+                      }}
                     >
                       No payments added
                     </td>
@@ -596,23 +604,26 @@ export default function MultiPayDialog({
                           borderBottom: '1px solid var(--border)',
                         }}
                       >
-                        <td style={{ padding: '8px 10px', fontWeight: 700 }}>{r.payerNo}</td>
+                        <td style={{ padding: '11px 12px', fontWeight: 800, fontSize: 15 }}>{r.payerNo}</td>
                         <td
                           style={{
-                            padding: '8px 10px',
-                            maxWidth: 100,
+                            padding: '11px 12px',
+                            maxWidth: 110,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
+                            fontWeight: 600,
+                            fontSize: 14,
                           }}
                         >
                           {r.refNo || '—'}
                         </td>
                         <td
                           style={{
-                            padding: '8px 10px',
-                            fontWeight: 700,
-                            maxWidth: 100,
+                            padding: '11px 12px',
+                            fontWeight: 800,
+                            fontSize: 14,
+                            maxWidth: 120,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -622,14 +633,22 @@ export default function MultiPayDialog({
                         </td>
                         <td
                           style={{
-                            padding: '8px 10px',
+                            padding: '11px 12px',
                             fontFamily: "'JetBrains Mono', monospace",
                             fontWeight: 800,
+                            fontSize: 16,
                           }}
                         >
                           {fmtMoney(r.amount)}
                         </td>
-                        <td style={{ padding: '8px 10px', fontFamily: "'JetBrains Mono', monospace" }}>
+                        <td
+                          style={{
+                            padding: '11px 12px',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontWeight: 700,
+                            fontSize: 15,
+                          }}
+                        >
                           {fmtMoney(r.tip)}
                         </td>
                       </tr>
@@ -654,14 +673,14 @@ export default function MultiPayDialog({
                 background: 'var(--red-bg)',
                 border: '1.5px solid var(--red-border)',
                 color: 'var(--red)',
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              <AlertCircle size={14} />
+              <AlertCircle size={16} />
               {error}
             </div>
           )}
@@ -670,24 +689,38 @@ export default function MultiPayDialog({
             style={{
               display: 'flex',
               justifyContent: 'flex-end',
-              gap: 20,
+              gap: 24,
               marginTop: 12,
               paddingTop: 12,
               borderTop: '1px solid var(--border)',
-              fontSize: 12,
+              fontSize: 15,
               fontWeight: 700,
               color: 'var(--text-2)',
             }}
           >
             <span>
               Paid{' '}
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-1)' }}>
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: 'var(--text-1)',
+                  fontSize: 17,
+                  fontWeight: 800,
+                }}
+              >
                 {fmtMoney(billTotal)}
               </span>
             </span>
             <span>
               Tips{' '}
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-1)' }}>
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: 'var(--text-1)',
+                  fontSize: 17,
+                  fontWeight: 800,
+                }}
+              >
                 {fmtMoney(tipTotal)}
               </span>
             </span>
@@ -698,6 +731,7 @@ export default function MultiPayDialog({
                   fontFamily: "'JetBrains Mono', monospace",
                   color: 'var(--green)',
                   fontWeight: 800,
+                  fontSize: 18,
                 }}
               >
                 {fmtMoney(grandTotal)}
@@ -731,7 +765,7 @@ export default function MultiPayDialog({
                 ? `linear-gradient(135deg, ${BRAND} 0%, ${BRAND2} 100%)`
                 : 'var(--border)',
               color: canDone ? '#fff' : 'var(--text-4)',
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: 900,
               letterSpacing: 0.5,
               cursor: canDone ? 'pointer' : 'not-allowed',
@@ -752,7 +786,7 @@ export default function MultiPayDialog({
               border: '1.5px solid var(--red-border)',
               background: 'var(--red-bg)',
               color: 'var(--red)',
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: 800,
               cursor: 'pointer',
             }}
@@ -784,12 +818,12 @@ function FieldRow({
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <span
         style={{
-          width: 58,
+          width: 72,
           flexShrink: 0,
           textAlign: 'right',
-          fontSize: 11,
-          fontWeight: 700,
-          color: 'var(--text-2)',
+          fontSize: 14,
+          fontWeight: 800,
+          color: 'var(--text-1)',
         }}
       >
         {label}
@@ -798,17 +832,17 @@ function FieldRow({
         onClick={onFocus}
         style={{
           flex: 1,
-          height: 38,
+          height: 44,
           borderRadius: 8,
           boxSizing: 'border-box',
-          border: `1.5px solid ${focused ? 'var(--brand-border)' : 'var(--border)'}`,
+          border: `2px solid ${focused ? 'var(--brand)' : 'var(--border)'}`,
           background: focused ? 'var(--brand-bg)' : '#fff',
           display: 'flex',
           alignItems: 'center',
           padding: '0 12px',
-          fontSize: mono ? 15 : 12,
-          fontWeight: mono ? 800 : 600,
-          color: value ? 'var(--text-1)' : 'var(--text-4)',
+          fontSize: mono ? 18 : 15,
+          fontWeight: mono ? 800 : 700,
+          color: value ? 'var(--text-1)' : 'var(--text-3)',
           fontFamily: mono ? "'JetBrains Mono', monospace" : 'inherit',
           cursor: 'text',
         }}
@@ -840,14 +874,14 @@ function NumBtn({
       onMouseDown={press}
       onMouseUp={release}
       style={{
-        height: 44,
+        height: 46,
         width: '100%',
         borderRadius: 10,
         border: '1.5px solid var(--border)',
         background: '#fff',
         color: 'var(--text-1)',
-        fontSize: isText && label.length > 2 ? 11 : 16,
-        fontWeight: 700,
+        fontSize: isText && label.length > 2 ? 13 : 18,
+        fontWeight: 800,
         cursor: 'pointer',
         fontFamily:
           isText && label !== 'C' && label !== 'ADD' ? "'JetBrains Mono', monospace" : 'inherit',
@@ -896,9 +930,9 @@ function ActionBtn({
       onMouseUp={release}
       style={{
         flex: 1,
-        height: 38,
+        height: 42,
         borderRadius: 10,
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: 800,
         letterSpacing: 0.3,
         cursor: 'pointer',

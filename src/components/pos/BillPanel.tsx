@@ -1,4 +1,5 @@
-import { ShoppingCart, Trash2, X } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, ChevronUp, ShoppingCart, Trash2, X } from 'lucide-react'
 import BillItemRow from './BillItemRow'
 import IconButton from '../common/IconButton'
 import type { BillItem, BillTotals } from '../../types/pos'
@@ -12,6 +13,7 @@ interface BillPanelProps {
   onRemove: (id: string) => void
   onClear: () => void
   onEditQty?: (id: string) => void
+  onEditPrice?: (id: string) => void
   selectionMode?: boolean
   selectedIds?: Set<string>
   onEnterSelection?: (id: string) => void
@@ -28,6 +30,7 @@ export default function BillPanel({
   onRemove,
   onClear,
   onEditQty,
+  onEditPrice,
   selectionMode = false,
   selectedIds,
   onEnterSelection,
@@ -35,6 +38,9 @@ export default function BillPanel({
   onCancelSelection,
   onDeleteSelected,
 }: BillPanelProps) {
+  /** Collapsed by default — Grand Total only; expand for Subtotal / Discount / Tax */
+  const [totalsOpen, setTotalsOpen] = useState(false)
+
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/40 bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_8px_32px_rgba(31,17,20,0.10)] backdrop-blur-2xl">
       {selectionMode ? (
@@ -110,6 +116,7 @@ export default function BillPanel({
                   onDecrement={onDecrement}
                   onRemove={onRemove}
                   onEditQty={onEditQty}
+                  onEditPrice={onEditPrice}
                   selectionMode={selectionMode}
                   selected={selectedIds?.has(item.id) ?? false}
                   onEnterSelection={onEnterSelection}
@@ -121,35 +128,56 @@ export default function BillPanel({
         )}
       </div>
 
-      <footer className="shrink-0 border-t border-white/40 bg-white/25 px-4 py-3.5">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm text-salon-muted sm:text-base">
-            <span>Subtotal</span>
-            <span className="font-semibold tabular-nums text-salon-text">
-              {formatCurrency(totals.subtotal)}
-            </span>
-          </div>
+      <footer className="shrink-0 border-t border-white/40 bg-white/25 px-3 py-2.5 sm:px-4 sm:py-3">
+        <div className="space-y-1.5">
+          {totalsOpen ? (
+            <div className="space-y-1.5 pb-1.5">
+              <div className="flex items-center justify-between text-sm text-salon-muted sm:text-base">
+                <span>Subtotal</span>
+                <span className="font-semibold tabular-nums text-salon-text">
+                  {formatCurrency(totals.subtotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm text-salon-muted sm:text-base">
+                <span>Discount</span>
+                <span className="font-semibold tabular-nums text-salon-accent">
+                  {totals.discount > 0
+                    ? `− ${formatCurrency(totals.discount)}`
+                    : formatCurrency(0)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm text-salon-muted sm:text-base">
+                <span>Tax</span>
+                <span className="font-semibold tabular-nums text-salon-text">
+                  {formatCurrency(totals.tax)}
+                </span>
+              </div>
+            </div>
+          ) : null}
 
-          <div className="flex items-center justify-between text-sm text-salon-muted sm:text-base">
-            <span>Discount</span>
-            <span className="font-semibold tabular-nums text-salon-accent">
-              {totals.discount > 0 ? `− ${formatCurrency(totals.discount)}` : formatCurrency(0)}
+          <button
+            type="button"
+            onClick={() => setTotalsOpen((v) => !v)}
+            aria-expanded={totalsOpen}
+            aria-label={totalsOpen ? 'Hide bill details' : 'Show bill details'}
+            className={[
+              'flex w-full items-center justify-between gap-2 rounded-xl px-1 py-0.5 text-left',
+              'transition-colors hover:bg-white/40',
+              totalsOpen ? 'border-t border-white/40 pt-2' : '',
+            ].join(' ')}
+          >
+            <span className="flex min-w-0 items-center gap-1.5">
+              {totalsOpen ? (
+                <ChevronDown size={18} className="shrink-0 text-salon-primary" />
+              ) : (
+                <ChevronUp size={18} className="shrink-0 text-salon-primary" />
+              )}
+              <span className="text-lg font-bold text-salon-primary sm:text-xl">Grand Total</span>
             </span>
-          </div>
-
-          <div className="flex items-center justify-between text-sm text-salon-muted sm:text-base">
-            <span>Tax</span>
-            <span className="font-semibold tabular-nums text-salon-text">
-              {formatCurrency(totals.tax)}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between border-t border-white/40 pt-2.5">
-            <span className="text-lg font-bold text-salon-primary sm:text-xl">Grand Total</span>
             <span className="text-xl font-bold tabular-nums text-salon-primary sm:text-2xl">
               {formatCurrency(totals.total)}
             </span>
-          </div>
+          </button>
         </div>
       </footer>
     </section>

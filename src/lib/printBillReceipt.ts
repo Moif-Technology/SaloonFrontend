@@ -12,6 +12,7 @@ import {
   buildReceiptItemDescHtml,
   buildReceiptItemsTableHeadHtml,
   buildReceiptSettlementLineHtml,
+  buildReceiptStoreHeaderHtml,
   buildReceiptTaxDetailsHtml,
   buildReceiptTotalLineHtml,
   escReceipt as esc,
@@ -19,13 +20,14 @@ import {
   fmtMoney,
   fmtQty,
   fmtReceiptDateTime,
-  openReceiptPrintWindow,
   RECEIPT_BARCODE_EXTRA_CSS,
   RECEIPT_LABELS,
   buildReceiptBiLabel,
+  receiptInvoiceTitles,
+  hasCompanyTaxNumber,
 } from './receiptPrintTheme'
 import { getPosSession } from '../utils/posSession'
-import { withReceiptPrintMeta } from '../utils/receiptSettings'
+import { receiptPrintMeta } from '../utils/receiptSettings'
 import {
   isSplitBill,
   normalizeBillPaymentMode,
@@ -84,10 +86,20 @@ export interface ReceiptBill {
   }
   items: ReceiptBillItem[]
   paymentSplits?: PaymentSplit[]
+  /** Tip when not stored on split rows (single-tender settle). */
+  tipAmount?: number
+  jobNo?: string
+  stylistName?: string
+  chairNo?: string | number
 }
 
 export interface PrintMeta {
   companyName?: string
+  heading1?: string
+  heading2?: string
+  heading3?: string
+  heading4?: string
+  heading5?: string
   branchName?: string
   phone?: string
   address?: string
@@ -106,14 +118,55 @@ function isWalkInCustomer(bill: ReceiptBill) {
   return !name || name === 'walk-in' || name === 'walkin' || name === 'walk in'
 }
 
-function resolveCompanyHeader(bill: ReceiptBill, meta: PrintMeta) {
+export function billTipTotal(bill: ReceiptBill): number {
+  const fromSplits = (bill.paymentSplits ?? []).reduce(
+    (sum, s) => sum + (Number(s.tip) || 0),
+    0,
+  )
+  if (fromSplits > 0.001) return fromSplits
+  return Number(bill.tipAmount) || 0
+}
+
+/** Active tender rows for receipt / viewer (amount or tip). */
+export function activePaymentSplits(bill: ReceiptBill): PaymentSplit[] {
+  return (bill.paymentSplits ?? []).filter(
+    (s) => Number(s.amount) > 0 || Number(s.tip) > 0,
+  )
+}
+
+function resolveReceiptHeadings(bill: ReceiptBill, meta: PrintMeta) {
   const co = bill.company ?? {}
+  let h1 = String(meta.heading1 ?? co.companyName ?? meta.companyName ?? '').trim()
+  let h2 = String(meta.heading2 ?? '').trim()
+  let h3 = String(meta.heading3 ?? '').trim()
+  let h4 = String(meta.heading4 ?? '').trim()
+  let h5 = String(meta.heading5 ?? '').trim()
+
+  if (!h2 && !h3 && !h4 && !h5 && meta.address) {
+    const legacy = String(meta.address)
+      .split(/\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+    if (!h1 && legacy[0]) h1 = legacy[0]
+    if (legacy.length > 1 && !h2) h2 = legacy[1]
+    if (legacy.length > 2 && !h3) h3 = legacy[2]
+    if (legacy.length > 3 && !h4) h4 = legacy[3]
+    if (legacy.length > 4 && !h5) h5 = legacy[4]
+  }
+
+  if (!h1 && co.companyAddress) {
+    h1 = String(co.companyName ?? meta.companyName ?? 'MOIF TECHNOLOGY').trim()
+  }
+
   return {
-    name: co.companyName ?? meta.companyName ?? 'MOIF TECHNOLOGY',
-    address: co.companyAddress ?? meta.address ?? '',
-    phone: co.companyPhone ?? meta.phone ?? '',
-    branch: co.branchName ?? meta.branchName ?? '',
-    trn: co.taxRegistrationNo ?? meta.trn ?? '',
+    heading1: h1,
+    heading2: h2,
+    heading3: h3,
+    heading4: h4,
+    heading5: h5,
+    trn: String(co.taxRegistrationNo ?? meta.trn ?? '').trim(),
+    branch: String(co.branchName ?? meta.branchName ?? '').trim(),
+    phone: String(co.companyPhone ?? meta.phone ?? '').trim(),
   }
 }
 
@@ -132,7 +185,7 @@ export function mapSalonViewerBill(raw: Record<string, unknown>): ReceiptBill {
 
   const paymentSplits = splitsRaw
     .map((s) => ({
-      payMode: splitPayModeLabel(s.payMode ?? s.PayMode ?? 'CASH'),
+      payMode: String(s.payMode ?? s.PayMode ?? 'CASH'),
       amount: Number(s.amount ?? s.Amount ?? s.bill_amount ?? 0),
       tip: Number(s.tip ?? s.Tip ?? s.tip_amount ?? 0),
       refNo: String(s.refNo ?? s.RefNo ?? s.ref_no ?? ''),
@@ -140,9 +193,7 @@ export function mapSalonViewerBill(raw: Record<string, unknown>): ReceiptBill {
     .filter((s) => Number(s.amount) > 0 || Number(s.tip) > 0)
 
   const rawMode = master.PaymentMode ?? master.paymentMode ?? 'CASH'
-  const paymentMode = isSplitBill(rawMode, paymentSplits)
-    ? 'MULTIPAYMENT'
-    : normalizeBillPaymentMode(rawMode)
+  const paymentMode = normalizeBillPaymentMode(rawMode)
 
   return {
     salesId: (master.SalesID ?? master.salesId) as string | number | undefined,
@@ -152,6 +203,13 @@ export function mapSalonViewerBill(raw: Record<string, unknown>): ReceiptBill {
     paymentMode,
     counterNo: (master.CounterNo ?? master.counterNo ?? '') as string | number,
     staffName: String(master.CashierName ?? master.SalesManName ?? master.staffName ?? ''),
+    jobNo: String(master.JobNo ?? master.jobNo ?? master.KotNumber ?? master.kotNumber ?? ''),
+    stylistName: String(
+      master.StylistName ?? master.stylistName ?? master.SalesManName ?? '',
+    ),
+    chairNo: (master.ChairNo ?? master.chairNo ?? master.StationID ?? master.stationId ?? '') as
+      | string
+      | number,
     remarks: String(master.Remarks ?? master.remarks ?? ''),
     taxableAmt: Number(master.TaxableAmount ?? master.taxableAmt ?? 0),
     taxAmt: Number(master.Tax1AmountM ?? master.taxAmt ?? 0),
@@ -211,6 +269,9 @@ export function billFromSettleResult(
     paymentMode: String(result.paymentMode ?? orderData.paymentMode ?? 'CASH'),
     counterNo: orderData.counterNo ?? session.counterNo,
     staffName: orderData.cashierName ?? session.staffName,
+    jobNo: String(orderData.jobNo ?? orderData.kotNumber ?? result.jobNo ?? '').trim() || undefined,
+    stylistName: orderData.stylistName ?? '',
+    chairNo: orderData.stationId ?? session.stationId,
     remarks: orderData.comments || '',
     taxableAmt: orderData.taxableAmount ?? orderData.subTotal,
     taxAmt: orderData.tax1Amount ?? 0,
@@ -231,16 +292,18 @@ export function billFromSettleResult(
     },
     items,
     paymentSplits: orderData.paymentSplits,
+    tipAmount: Number(orderData.tipAmount) || 0,
   }
 }
 
 export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
-  const co = resolveCompanyHeader(bill, meta)
+  const headings = resolveReceiptHeadings(bill, meta)
   const isDraft = !!meta.draft
-  const hasTrn = Boolean(String(co.trn ?? '').trim())
-  const invoiceTitle = isDraft ? 'Draft Copy' : hasTrn ? 'Tax Invoice' : 'Invoice'
-  const invoiceTitleAr = isDraft ? 'مسودة' : hasTrn ? 'فاتورة ضريبية' : 'فاتورة'
-  const docLabel = isDraft ? 'JOB #' : 'BILL #'
+  const hasTrn = hasCompanyTaxNumber(headings.trn)
+  const { en: invoiceTitle, ar: invoiceTitleAr } = receiptInvoiceTitles({
+    trn: headings.trn,
+    draft: isDraft,
+  })
 
   const billNoLabel = String(bill.billNo ?? bill.salesId ?? '')
   const barcodeText = !isDraft ? formatDocBarcode(billNoLabel) : ''
@@ -256,13 +319,14 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
   const settlement = isDraft
     ? 'PENDING'
     : isSplitBill(bill.paymentMode, bill.paymentSplits)
-      ? 'M-Pay'
+      ? 'MULTIPAYMENT'
       : payMode
 
   const taxableAmt = Number(bill.taxableAmt) || 0
   const taxAmt = Number(bill.taxAmt) || 0
   const billAmount = Number(bill.amount) || 0
   const paidAmount = isDraft ? 0 : Number(bill.paidAmount ?? bill.amount) || 0
+  const tipTotal = isDraft ? 0 : billTipTotal(bill)
   const balAmount = isDraft ? billAmount : Number(bill.balanceAmount) || 0
   const discountAmt = Number(bill.discountAmt) || 0
   const roundOff = bill.roundOff != null ? Number(bill.roundOff) : 0
@@ -271,11 +335,12 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
     .map((it, idx) => {
       const vatPer = Number(it.vatPer) || Number(bill.taxRate) || 5
       const vatAmt = Number(it.vatAmt) || 0
-      const code = it.productCode || (it.productId ? String(it.productId) : '')
       const isLast = idx === items.length - 1
-      const vatLine = hasTrn
-        ? `<td colspan="2" class="r sub">VAT@${vatPer}% (${fmtMoney(vatAmt)})</td>`
-        : `<td colspan="2" class="r sub"></td>`
+      const vatRow = hasTrn
+        ? `<tr class="item-sub${isLast ? ' item-sub-last' : ''}">
+        <td colspan="4" class="r sub">VAT@${vatPer}% (${fmtMoney(vatAmt)})</td>
+      </tr>`
+        : ''
       return `
       <tr class="item-main">
         <td class="desc">${buildReceiptItemDescHtml(it, esc)}</td>
@@ -283,10 +348,7 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
         <td class="r">${lineUnitDisplay(it)}</td>
         <td class="r b">${fmtMoney(it.lineTotal)}</td>
       </tr>
-      <tr class="item-sub${isLast ? ' item-sub-last' : ''}">
-        <td colspan="2" class="sub">${esc(code)}</td>
-        ${vatLine}
-      </tr>
+      ${vatRow}
     `
     })
     .join('')
@@ -322,45 +384,62 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
   }
 
   let splitBlock = ''
-  const splits = (bill.paymentSplits ?? []).filter((s) => Number(s.amount) > 0)
+  const splits = activePaymentSplits(bill)
   if (!isDraft && isSplitBill(bill.paymentMode, splits) && splits.length) {
+    const tipSum = splits.reduce((a, s) => a + (Number(s.tip) || 0), 0)
     splitBlock = `
-      <div class="pair-row small" style="margin-top:4px"><span class="lbl"><b>Split Payment</b></span><span></span></div>
-      ${splits
-        .map(
-          (s) => `
-      <div class="pair-row small">
-        <span class="lbl">${esc(splitPayModeLabel(s.payMode))}</span>
-        <span class="val">${fmtMoney(Number(s.amount) || 0)}</span>
+      <div class="pair-row small" style="margin-top:4px">
+        <span class="lbl"><b>Split Payment</b></span>
+        <span class="val">${splits.length} tender${splits.length === 1 ? '' : 's'}</span>
       </div>
-    `,
-        )
+      ${splits
+        .map((s) => {
+          const tip = Number(s.tip) || 0
+          const mode = splitPayModeLabel(s.payMode)
+          const tipRow =
+            tip > 0.001
+              ? `
+      <div class="pair-row small">
+        <span class="lbl">${esc(mode)} Tip</span>
+        <span class="val">${fmtMoney(tip)}</span>
+      </div>`
+              : ''
+          return `
+      <div class="pair-row small">
+        <span class="lbl">${esc(mode)}</span>
+        <span class="val">${fmtMoney(Number(s.amount) || 0)}</span>
+      </div>${tipRow}`
+        })
         .join('')}
+      ${
+        tipSum > 0.001
+          ? `
+      <div class="pair-row small">
+        <span class="lbl"><b>Tip Total</b></span>
+        <span class="val">${fmtMoney(tipSum)}</span>
+      </div>`
+          : ''
+      }
+    `
+  } else if (!isDraft && tipTotal > 0.001) {
+    splitBlock = `
+      <div class="pair-row small">
+        <span class="lbl">${buildReceiptBiLabel(RECEIPT_LABELS.tip)}</span>
+        <span class="val">${fmtMoney(tipTotal)}</span>
+      </div>
     `
   }
 
-  const phoneLine = co.phone ? `<div class="meta-line">Ph: ${esc(co.phone)}</div>` : ''
-  const addressLines = String(co.address || '')
-    .split(/\n/)
-    .map((l) => l.trim())
-    .filter(Boolean)
-  const addressHtml = addressLines
-    .map((line) => `<div class="meta-line">${esc(line)}</div>`)
-    .join('')
   const footerMain =
     meta.footer?.trim() ||
     (isDraft ? 'Draft Copy — Not a Tax Invoice' : 'Thank You......Visit Again')
-  const footerExtra = !isDraft && meta.footer2?.trim() ? meta.footer2.trim() : ''
+  const footerExtra = meta.footer2?.trim() ?? ''
   const draftBanner = isDraft
     ? `<div class="draft-banner">*** DRAFT — FOR CUSTOMER REFERENCE ***<div class="draft-banner-ar">مسودة — ليست فاتورة ضريبية</div></div>`
     : ''
 
   const bodyHtml = `
-  <div class="store-name">${esc(co.name)}</div>
-  ${co.branch ? `<div class="meta-line">${esc(co.branch)}</div>` : ''}
-  ${phoneLine}
-  ${addressHtml}
-  ${co.trn ? `<div class="meta-line">TRN: ${esc(co.trn)}</div>` : ''}
+  ${buildReceiptStoreHeaderHtml(headings, esc)}
 
   <hr class="dash" />
   <div class="title-row">
@@ -371,12 +450,24 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
   <hr class="dash" />
 
   <div class="row">
-    <span class="row-left"><span class="lbl">${docLabel}</span> : ${esc(billNoLabel)}</span>
+    <span class="row-left"><span class="lbl">BILL #</span> : ${esc(billNoLabel)}</span>
     <span class="row-right">${fmtReceiptDateTime(bill.billTime ?? bill.billDate)}</span>
   </div>
+  ${
+    bill.jobNo
+      ? `<div class="row">
+    <span class="row-left"><span class="lbl">JOB #</span> : ${esc(bill.jobNo)}</span>
+    <span class="row-right"></span>
+  </div>`
+      : ''
+  }
   <div class="row">
     <span class="row-left"><span class="lbl">COUNTER</span> : ${esc(bill.counterNo ?? meta.counterNo ?? '')}</span>
     <span class="row-right"><span class="lbl">CASHIER</span> : ${esc(bill.staffName ?? 'CASHIER')}</span>
+  </div>
+  <div class="row">
+    <span class="row-left"><span class="lbl">CHAIR</span> : ${esc(bill.chairNo ?? '')}</span>
+    <span class="row-right"><span class="lbl">STYLIST</span> : ${esc(bill.stylistName ?? '')}</span>
   </div>
   ${customerBlock}
   ${bill.remarks?.trim() ? `<div class="row"><span class="lbl">Comments</span><span class="val">${esc(bill.remarks.trim())}</span></div>` : ''}
@@ -396,7 +487,7 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
   ${buildReceiptTotalLineHtml(billAmount, fmtMoney)}
   ${buildReceiptSettlementLineHtml(settlement, esc)}
   ${splitBlock}
-  ${buildReceiptBillSummaryHtml({ itemCount, qtyTotal, billAmount, paidAmount, balAmount, fmtMoney, fmtQty })}
+  ${buildReceiptBillSummaryHtml({ itemCount, qtyTotal, billAmount, paidAmount, balAmount, tipTotal, fmtMoney, fmtQty })}
   ${creditBlock}
 
   ${
@@ -428,14 +519,15 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
     ? `
   .draft-banner {
     text-align: center;
-    font-size: 12px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.4px;
     margin: 4px 0 2px;
   }
   .draft-banner-ar {
     font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-    font-size: 11px;
+    font-size: 15px;
+    font-weight: 700;
     direction: rtl;
     margin-top: 2px;
   }
@@ -454,20 +546,21 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
 export async function printBillFromData(bill: ReceiptBill, meta: PrintMeta = {}) {
   if (!bill) throw new Error('No bill data to print')
   const html = buildBillReceiptHtml(bill, meta)
+  const { isNativePosApp, printReceiptHtml } = await import('./androidPrinter')
 
-  // Try Android Sunmi printer first
-  try {
-    const { IS_ANDROID_POS, printHtmlOnAndroid } = await import('./androidPrinter')
-    if (IS_ANDROID_POS) {
-      const printed = await printHtmlOnAndroid(html)
-      if (printed) return
+  if (isNativePosApp()) {
+    try {
+      await printReceiptHtml(html)
+      return
+    } catch (err) {
+      console.warn('HTML receipt print failed, using command fallback:', err)
+      const { printAndroidBill } = await import('./androidPosPrinter')
+      await printAndroidBill(bill, meta)
+      return
     }
-  } catch (err) {
-    console.warn('Android printer not available:', err)
   }
 
-  // Browser fallback
-  await openReceiptPrintWindow(html, { useSunmi: false })
+  await printReceiptHtml(html)
 }
 
 /** Build receipt bill from open job (GET /job/:id) for draft print. */
@@ -570,7 +663,7 @@ export async function printJobDraft(
   const bill = billFromJobDetails(details, listRow)
   await printBillFromData(
     bill,
-    await withReceiptPrintMeta({
+    receiptPrintMeta({
       counterNo: session.counterNo,
       ...meta,
       draft: true,
@@ -582,7 +675,7 @@ export async function printJobDraft(
 export async function printBillReceipt(salesId: string | number, meta: PrintMeta = {}) {
   const raw = await apiService.fetchSalesViewerBill(String(salesId))
   const bill = mapSalonViewerBill(raw)
-  await printBillFromData(bill, await withReceiptPrintMeta(meta))
+  await printBillFromData(bill, receiptPrintMeta(meta))
   return bill
 }
 
@@ -594,7 +687,7 @@ export async function printSettlementBill(opts: {
   meta?: PrintMeta
 }) {
   const session = getPosSession()
-  const meta: PrintMeta = await withReceiptPrintMeta({
+  const meta: PrintMeta = receiptPrintMeta({
     counterNo: session.counterNo,
     ...opts.meta,
   })
@@ -611,6 +704,12 @@ export async function printSettlementBill(opts: {
       if (opts.orderData?.paymentMode && !bill.paymentMode) {
         bill.paymentMode = opts.orderData.paymentMode
       }
+      if (Number(opts.orderData?.tipAmount) > 0 && !(billTipTotal(bill) > 0.001)) {
+        bill.tipAmount = Number(opts.orderData?.tipAmount) || 0
+      }
+      if (opts.orderData?.jobNo) bill.jobNo = String(opts.orderData.jobNo)
+      if (opts.orderData?.stylistName) bill.stylistName = opts.orderData.stylistName
+      if (opts.orderData?.stationId) bill.chairNo = opts.orderData.stationId
       await printBillFromData(bill, meta)
       return
     }

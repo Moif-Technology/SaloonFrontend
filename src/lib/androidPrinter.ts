@@ -1,84 +1,109 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
+import { RECEIPT_THERMAL_HTML_CSS } from './receiptPrintTheme'
 
-export const IS_ANDROID_POS = Capacitor.getPlatform() === 'android'
+/** Running inside the Salon POS Capacitor APK (not Chrome browser). */
+export function isNativePosApp(): boolean {
+  return Capacitor.isNativePlatform()
+}
+
+/** @deprecated use isNativePosApp */
+export const IS_ANDROID_POS = isNativePosApp()
 
 const SunmiPrinter = registerPlugin('SunmiPrinter', {
   web: () => ({
-    printHtml: () => Promise.reject(new Error('Sunmi printer not available on web')),
+    isAvailable: () => Promise.resolve({ available: false }),
+    printHtml: () => Promise.reject(new Error('Install Salon POS APK for built-in printing')),
+    openDrawer: () => Promise.resolve({ opened: false }),
   }),
 })
 
-const SUNMI_80MM_BITMAP_WIDTH = 576
+/** Sunmi 80mm thermal = 576 dots. */
+const SUNMI_THERMAL_BITMAP_WIDTH = 576
 
 export interface PrintOptions {
   html?: string
   width?: number
 }
 
+function isSunmiBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Sunmi/i.test(navigator.userAgent)
+}
+
 /**
- * Print HTML on Sunmi Android device
+ * Print receipt HTML on the Sunmi built-in printer (D3 Mini inner printer).
  */
-export async function printHtmlOnAndroid(html: string, opts: PrintOptions = {}): Promise<boolean> {
-  if (!IS_ANDROID_POS) {
-    console.warn('Not on Android POS device')
-    return false
+export async function printHtmlOnAndroid(html: string, opts: PrintOptions = {}): Promise<void> {
+  if (!isNativePosApp()) {
+    if (isSunmiBrowser()) {
+      throw new Error(
+        'Open the Salon POS app (APK), not Chrome. Built-in printer only works in the installed app.',
+      )
+    }
+    throw new Error('Built-in printer is only available in the Android POS app')
   }
 
-  try {
-    console.log('Starting Android print...')
-
-    // Remove auto-print script
-    const cleanHtml = String(html ?? '')
-      .replace(/<script>[\s\S]*?window\.onload[\s\S]*?<\/script>/i, '')
-      .replace('</head>', `
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  const cleanHtml = String(html ?? '')
+    .replace(/<script>[\s\S]*?window\.onload[\s\S]*?<\/script>/gi, '')
+    .replace('</head>', `
+  <meta name="viewport" content="width=${SUNMI_THERMAL_BITMAP_WIDTH}, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <style>
     html, body {
-      width: 100% !important;
-      max-width: 100% !important;
+      box-sizing: border-box !important;
+      width: ${SUNMI_THERMAL_BITMAP_WIDTH}px !important;
+      max-width: ${SUNMI_THERMAL_BITMAP_WIDTH}px !important;
+      min-width: ${SUNMI_THERMAL_BITMAP_WIDTH}px !important;
       margin: 0 !important;
       background: #fff !important;
+      overflow-x: hidden !important;
     }
     body {
-      padding: 10px 12px !important;
+      padding: 6px 12px !important;
     }
+    ::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
     @page {
       size: auto !important;
       margin: 0 !important;
     }
+    ${RECEIPT_THERMAL_HTML_CSS}
   </style>
 </head>`)
 
-    console.log('Calling SunmiPrinter.printHtml()...')
-    const result = await (SunmiPrinter as any).printHtml({
-      html: cleanHtml,
-      width: opts.width ?? SUNMI_80MM_BITMAP_WIDTH,
-    })
-
-    console.log('Print result:', result)
-    console.log('✓ Printed to Sunmi printer')
-    return true
-  } catch (err) {
-    console.error('✗ Android print error:', err)
-    console.error('Error details:', JSON.stringify(err))
-    return false
-  }
+  await (SunmiPrinter as { printHtml: (o: { html: string; width?: number }) => Promise<unknown> }).printHtml({
+    html: cleanHtml,
+    width: opts.width ?? SUNMI_THERMAL_BITMAP_WIDTH,
+  })
 }
 
-/**
- * Check if plugin is available (diagnostic)
- */
+/** Built-in Sunmi printer on APK; browser preview only on web dev. */
+export async function printReceiptHtml(html: string, opts: PrintOptions = {}): Promise<void> {
+  if (isNativePosApp()) {
+    await printHtmlOnAndroid(html, opts)
+    return
+  }
+
+  const { openReceiptPrintWindow } = await import('./receiptPrintTheme')
+  await openReceiptPrintWindow(html)
+}
+
 export async function checkAndroidPrinterStatus(): Promise<{ available: boolean; message: string }> {
-  if (!IS_ANDROID_POS) {
-    return { available: false, message: 'Not on Android device' }
+  if (!isNativePosApp()) {
+    return {
+      available: false,
+      message: isSunmiBrowser()
+        ? 'Use Salon POS APK — Chrome cannot access built-in printer'
+        : 'Not on Android POS app',
+    }
   }
 
   try {
-    const result = await (SunmiPrinter as any).getPrinterStatus()
-    console.log('Printer status:', result)
-    return { available: result?.connected ?? false, message: 'Printer status checked' }
+    const result = await (SunmiPrinter as { isAvailable?: () => Promise<{ available?: boolean }> }).isAvailable?.()
+    const available = result?.available ?? false
+    return {
+      available,
+      message: available ? 'Sunmi built-in printer ready' : 'Sunmi printer service not connected yet',
+    }
   } catch (err) {
-    console.error('Status check error:', err)
     return { available: false, message: String(err) }
   }
 }

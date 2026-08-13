@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core'
+import { isNativePosApp } from '../lib/androidPrinter'
 import { isSunmiDevice, checkSunmiPrinterStatus } from '../lib/sunmiPrinter'
 
 export interface PrintConfig {
@@ -36,8 +37,16 @@ export async function detectPrintConfig(): Promise<PrintConfig> {
       paperWidth: 80, // Default thermal receipt width: 80mm
     }
 
-    // Check if Sunmi device
-    if (config.isMobile && isSunmiDevice()) {
+    // Android APK (Sunmi D3 Mini built-in printer)
+    if (isNativePosApp()) {
+      config.useSunmi = true
+      try {
+        config.printerAvailable = await checkSunmiPrinterStatus()
+      } catch (err) {
+        console.warn('Failed to check Sunmi printer status:', err)
+        config.printerAvailable = true
+      }
+    } else if (config.isMobile && isSunmiDevice()) {
       config.useSunmi = true
       try {
         config.printerAvailable = await checkSunmiPrinterStatus()

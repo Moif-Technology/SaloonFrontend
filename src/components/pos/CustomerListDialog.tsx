@@ -266,13 +266,15 @@ export default function CustomerListDialog({
                 mobile: editCustomer.mobile,
                 email: editCustomer.email,
                 address: editCustomer.address,
+                code: editCustomer.code,
               }
             : null
         }
         onSaved={() => {
+          const wasEdit = Boolean(editCustomer)
           setEntryOpen(false)
           setEditCustomer(null)
-          onInfo?.(editCustomer ? 'Customer updated' : 'Customer saved')
+          onInfo?.(wasEdit ? 'Customer updated' : 'Customer saved')
           void load()
         }}
         onError={onError}

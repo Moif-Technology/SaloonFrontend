@@ -103,6 +103,8 @@ export interface SettleOrderData {
   onlineSource?: string
   paymentRefNo?: string
   complimentApprovedBy?: string
+  /** Optional gratuity — stored on payment split, not included in netAmount / tax. */
+  tipAmount?: number
 }
 
 export interface SettleResult {

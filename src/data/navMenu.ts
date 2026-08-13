@@ -16,6 +16,9 @@ import {
   Network,
   UserCog,
   Settings2,
+  ArrowLeftRight,
+  Wallet,
+  DoorClosed,
 } from 'lucide-react'
 
 export interface NavMenuItem {
@@ -38,6 +41,8 @@ export interface NavMenuItem {
     | 'item-wise-report'
     | 'group-wise-report'
     | 'pos-setup'
+    | 'cash-in-out'
+    | 'counter-close'
     | null
   /** Only show for admin / owner roles */
   adminOnly?: boolean
@@ -55,6 +60,27 @@ export interface NavMenuSection {
  * Only include items that are implemented (action or Lock/Logout).
  */
 export const NAV_MENU_SECTIONS: NavMenuSection[] = [
+  {
+    id: 'cash',
+    title: 'Cash / Till',
+    icon: Wallet,
+    items: [
+      {
+        id: 'cash-in-out',
+        label: 'Cash In / Out',
+        icon: ArrowLeftRight,
+        path: null,
+        action: 'cash-in-out',
+      },
+      {
+        id: 'counter-close',
+        label: 'Counter Close',
+        icon: DoorClosed,
+        path: null,
+        action: 'counter-close',
+      },
+    ],
+  },
   {
     id: 'customers',
     title: 'Customer Management',

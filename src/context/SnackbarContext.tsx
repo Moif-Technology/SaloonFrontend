@@ -49,7 +49,7 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
     <SnackbarContext.Provider value={{ showSnackbar, hideSnackbar }}>
       {children}
       {snackbar && (
-        <div className="fixed bottom-44 sm:bottom-52 left-1/2 -translate-x-1/2 z-50 animate-[fadeIn_0.15s_ease-out]">
+        <div className="fixed bottom-44 sm:bottom-52 left-1/2 -translate-x-1/2 z-[300] animate-[fadeIn_0.15s_ease-out]">
           <Snackbar variant={snackbar.variant} message={snackbar.message} action={snackbar.action} />
         </div>
       )}

@@ -3,10 +3,10 @@
  */
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Loader2, Save, Settings2, X } from 'lucide-react'
-import { apiService } from '../../api/apiService'
 import {
-  clearReceiptSettingsCache,
   fetchReceiptSettings,
+  peekReceiptSettingsCache,
+  saveReceiptSettings,
   type ReceiptSettings,
 } from '../../utils/receiptSettings'
 import { isPosAdmin } from '../../utils/posAdmin'
@@ -71,6 +71,7 @@ export default function PosSetupDialog({
     let cancelled = false
     setLoading(true)
     setError(null)
+    setForm(peekReceiptSettingsCache() ?? empty)
     void fetchReceiptSettings(true)
       .then((s) => {
         if (!cancelled) setForm(s)
@@ -78,7 +79,6 @@ export default function PosSetupDialog({
       .catch((e) => {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'Failed to load settings')
-          setForm(empty)
         }
       })
       .finally(() => {
@@ -104,17 +104,7 @@ export default function PosSetupDialog({
     setSaving(true)
     setError(null)
     try {
-      await apiService.saveCompanyDetails({
-        heading1: form.heading1,
-        heading2: form.heading2,
-        heading3: form.heading3,
-        heading4: form.heading4,
-        heading5: form.heading5,
-        footer1: form.footer1,
-        footer2: form.footer2,
-        taxRegNo: form.taxRegNo,
-      })
-      clearReceiptSettingsCache()
+      await saveReceiptSettings(form)
       onSaved?.('Bill settings saved')
       onClose()
     } catch (err) {
@@ -155,7 +145,9 @@ export default function PosSetupDialog({
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold">POS Setup</h2>
-            <p className="text-xs text-white/75">Bill headings, tax number & footers</p>
+            <p className="text-xs text-white/75">
+              {loading ? 'Loading current settings…' : 'Bill headings, tax number & footers'}
+            </p>
           </div>
           <button
             type="button"

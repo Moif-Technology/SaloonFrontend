@@ -12,7 +12,6 @@ import {
 } from '../../lib/counterCloseMapper'
 import { printCounterReport } from '../../lib/printCounterReport'
 import { getPosSession, fmtMoney } from '../../utils/posSession'
-import { fetchReceiptSettings } from '../../utils/receiptSettings'
 
 const BRAND = '#521C1D'
 const PANEL_BG = '#FAF6F1'
@@ -94,6 +93,7 @@ export default function CounterCloseDialog({
   const [collectedText, setCollectedText] = useState('')
   const [activeDenom, setActiveDenom] = useState<string | null>(null)
   const [zDone, setZDone] = useState(false)
+  const [zConfirmOpen, setZConfirmOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -162,6 +162,17 @@ export default function CounterCloseDialog({
   const cashDifference =
     collectedAmount === 0 ? 0 : collectedAmount - cashToCollect
 
+  function requestZReport() {
+    if (submitting || loading || !data) return
+    const variance = Math.abs(cashDifference) > 0.009
+    const noCollected = collectedAmount <= 0
+    if (variance || noCollected) {
+      setZConfirmOpen(true)
+      return
+    }
+    void runReport('Z')
+  }
+
   function onKeypad(key: string) {
     if (activeDenom) {
       setCounts((prev) => {
@@ -210,10 +221,10 @@ export default function CounterCloseDialog({
 
       try {
         await printCounterReport(mapped, {
-          companyName: (await fetchReceiptSettings()).heading1 || undefined,
           counterNo: session.counterNo,
           reportType: type,
           closeNo,
+          reportAt: new Date(),
         })
       } catch (printErr) {
         setError(
@@ -241,14 +252,17 @@ export default function CounterCloseDialog({
   if (!open) return null
 
   const staffRows = (data?.staffSales as Record<string, unknown>[] | undefined) ?? []
-  const staffTotals = staffRows.reduce<{ bills: number; sales: number }>(
+  const staffTotals = staffRows.reduce<{ bills: number; sales: number; tips: number }>(
     (acc, r) => {
       acc.bills += counterCloseInt(r.billCount)
       acc.sales += counterCloseNum(r.saleAmount)
+      acc.tips += counterCloseNum(r.tipAmount)
       return acc
     },
-    { bills: 0, sales: 0 },
+    { bills: 0, sales: 0, tips: 0 },
   )
+  const cashInOutList =
+    (data?.cashInOutList as Record<string, unknown>[] | undefined) ?? []
   const title = isAdmin ? 'Counter Close - Admin' : 'Counter Close'
 
   return (
@@ -354,6 +368,20 @@ export default function CounterCloseDialog({
                   <SummaryRow label="Compliment Amt" value={fmtMoney(counterCloseNum(data.ComplimentAmount))} />
                   <SummaryRow label="Receipt C.Card Amt" value={fmtMoney(counterCloseNum(data.ReceiptAmountCCard))} />
                   <SummaryRow label="Total Discount" value={fmtMoney(counterCloseNum(data.DiscountAmount))} />
+                  <SummaryRow
+                    label="Cash Tip"
+                    value={fmtMoney(counterCloseNum(data.totalCashTip ?? data.CashTipAmount))}
+                  />
+                  <SummaryRow
+                    label="Card Tip"
+                    value={fmtMoney(counterCloseNum(data.totalCardTip ?? data.CardTipAmount))}
+                  />
+                  <SummaryRow
+                    label="Total Tip"
+                    value={fmtMoney(counterCloseNum(data.totalTip ?? data.TipAmount))}
+                    bold
+                    highlight
+                  />
                 </MetricColumn>
                 <MetricColumn>
                   <p className="font-bold mb-1" style={{ color: BRAND, fontSize: 13 }}>
@@ -372,20 +400,20 @@ export default function CounterCloseDialog({
               <div
                 className="shrink-0 overflow-auto"
                 style={{
-                  maxHeight: 110,
+                  maxHeight: 140,
                   background: PANEL_BG,
                   borderRadius: 8,
                   border: '1px solid #D1D5DB',
                 }}
               >
                 <div
-                  className="px-2 py-1 text-[12px] font-bold flex items-center justify-between"
+                  className="px-2 py-1 text-[12px] font-bold flex items-center justify-between gap-2"
                   style={{ color: BRAND, background: 'rgba(82,28,29,0.08)' }}
                 >
-                  <span>Staff / User wise sales</span>
-                  <span className="font-semibold text-black/55">
+                  <span className="shrink-0">Staff / User wise sales</span>
+                  <span className="font-semibold text-black/55 text-right truncate">
                     {staffRows.length} staff · {staffTotals.bills} bills ·{' '}
-                    {fmtMoney(staffTotals.sales)}
+                    {fmtMoney(staffTotals.sales)} · Tip {fmtMoney(staffTotals.tips)}
                   </span>
                 </div>
                 {staffRows.length === 0 ? (
@@ -395,18 +423,28 @@ export default function CounterCloseDialog({
                       : 'No pending staff sales for this counter'}
                   </p>
                 ) : (
-                  <table className="w-full text-[12px]">
+                  <table
+                    className="w-full text-[12px]"
+                    style={{ tableLayout: 'fixed' }}
+                  >
+                    <colgroup>
+                      <col style={{ width: '34%' }} />
+                      <col style={{ width: '14%' }} />
+                      <col style={{ width: '26%' }} />
+                      <col style={{ width: '26%' }} />
+                    </colgroup>
                     <thead>
                       <tr style={{ color: BRAND }}>
                         <th className="text-left px-2 py-0.5 font-bold">Staff</th>
                         <th className="text-right px-2 py-0.5 font-bold">Bills</th>
-                        <th className="text-right px-2 py-0.5 font-bold">Sale amount</th>
+                        <th className="text-right px-2 py-0.5 font-bold">Sale</th>
+                        <th className="text-right px-2 py-0.5 font-bold">Tip</th>
                       </tr>
                     </thead>
                     <tbody>
                       {staffRows.map((r, i) => (
                         <tr key={String(r.staffId ?? i)}>
-                          <td className="px-2 py-0.5 font-semibold">
+                          <td className="px-2 py-0.5 font-semibold truncate">
                             {String(r.staffName ?? 'Unknown')}
                           </td>
                           <td className="px-2 py-0.5 text-right tabular-nums">
@@ -414,6 +452,12 @@ export default function CounterCloseDialog({
                           </td>
                           <td className="px-2 py-0.5 text-right tabular-nums font-semibold">
                             {fmtMoney(counterCloseNum(r.saleAmount))}
+                          </td>
+                          <td
+                            className="px-2 py-0.5 text-right tabular-nums font-bold"
+                            style={{ color: BRAND }}
+                          >
+                            {fmtMoney(counterCloseNum(r.tipAmount))}
                           </td>
                         </tr>
                       ))}
@@ -433,11 +477,69 @@ export default function CounterCloseDialog({
                         >
                           {fmtMoney(staffTotals.sales)}
                         </td>
+                        <td
+                          className="px-2 py-1 text-right font-bold tabular-nums"
+                          style={{ color: BRAND }}
+                        >
+                          {fmtMoney(staffTotals.tips)}
+                        </td>
                       </tr>
                     </tbody>
                   </table>
                 )}
               </div>
+
+              {cashInOutList.length > 0 && (
+                <div
+                  className="shrink-0 overflow-auto"
+                  style={{
+                    maxHeight: 120,
+                    background: PANEL_BG,
+                    borderRadius: 8,
+                    border: '1px solid #D1D5DB',
+                  }}
+                >
+                  <div
+                    className="px-2 py-1 text-[12px] font-bold"
+                    style={{ color: BRAND, background: 'rgba(82,28,29,0.08)' }}
+                  >
+                    Cash In / Out ({cashInOutList.length})
+                  </div>
+                  <ul className="m-0 list-none divide-y divide-[#E5E7EB] p-0">
+                    {cashInOutList.map((row, i) => {
+                      const isIn =
+                        String(row.transactionType ?? row.transaction_type ?? '') ===
+                        'CASH_IN'
+                      const amt = counterCloseNum(row.amount)
+                      const remarks = String(row.remarks ?? '—')
+                      return (
+                        <li
+                          key={String(row.id ?? i)}
+                          className="flex items-center justify-between gap-2 px-2 py-1.5"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span
+                              className="text-[10px] font-extrabold uppercase tracking-wide"
+                              style={{ color: isIn ? '#15803D' : '#DC2626' }}
+                            >
+                              {isIn ? 'IN' : 'OUT'}
+                            </span>
+                            <span className="ml-1.5 text-[11px] font-medium text-black/55 truncate">
+                              {remarks}
+                            </span>
+                          </div>
+                          <span
+                            className="shrink-0 text-[12px] font-extrabold tabular-nums"
+                            style={{ color: isIn ? '#15803D' : '#DC2626' }}
+                          >
+                            {fmtMoney(amt)}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
 
               <p className="text-[13px] font-bold shrink-0" style={{ color: BRAND }}>
                 Cash Denominations
@@ -562,7 +664,7 @@ export default function CounterCloseDialog({
             <button
               type="button"
               disabled={submitting || loading || !data}
-              onClick={() => void runReport('Z')}
+              onClick={() => void requestZReport()}
               className="h-10 min-w-[120px] px-4 rounded-lg text-[13px] font-bold text-white disabled:opacity-40"
               style={{ background: BRAND }}
             >
@@ -571,6 +673,58 @@ export default function CounterCloseDialog({
           )}
         </div>
       </div>
+
+      {zConfirmOpen && (
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/50 p-4">
+          <div
+            className="bg-white w-full max-w-md p-5 shadow-xl"
+            style={{ borderRadius: 12 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold mb-2" style={{ color: BRAND }}>
+              Confirm Z-Report
+            </h3>
+            <p className="text-sm text-black/75 mb-1">
+              Cash to collect: <strong>{fmtMoney(cashToCollect)}</strong>
+            </p>
+            <p className="text-sm text-black/75 mb-1">
+              Collected: <strong>{fmtMoney(collectedAmount)}</strong>
+            </p>
+            <p className="text-sm text-black/75 mb-4">
+              Difference:{' '}
+              <strong style={{ color: Math.abs(cashDifference) > 0.009 ? '#DC2626' : BRAND }}>
+                {fmtMoney(cashDifference)}
+              </strong>
+            </p>
+            {collectedAmount <= 0 && (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+                Collected amount is zero. Close anyway?
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="flex-1 h-10 rounded-lg border font-semibold"
+                style={{ borderColor: BRAND, color: BRAND }}
+                onClick={() => setZConfirmOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="flex-1 h-10 rounded-lg text-white font-bold"
+                style={{ background: BRAND }}
+                onClick={() => {
+                  setZConfirmOpen(false)
+                  void runReport('Z')
+                }}
+              >
+                Close Counter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
