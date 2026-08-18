@@ -24,6 +24,10 @@ import CustomerEntryModal from '../components/pos/CustomerEntryModal'
 import NumericKeypadModal from '../components/common/NumericKeypadModal'
 import { applyNumericKey } from '../utils/numericInput'
 import AppointmentListModal from '../components/pos/AppointmentListModal'
+import AppointmentCalendarModal from '../components/pos/AppointmentCalendarModal'
+import UpcomingBookingsModal from '../components/pos/UpcomingBookingsModal'
+import WalkInQueueModal from '../components/pos/WalkInQueueModal'
+import BookingManagementModal from '../components/pos/BookingManagementModal'
 import DiscountModal from '../components/pos/DiscountModal'
 
 import PrintOptionsModal, {
@@ -96,6 +100,10 @@ export default function PosPage() {
   const [billSeq, setBillSeq] = useState(123)
   const [customerLabel, setCustomerLabel] = useState('Walk-in')
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false)
+  const [upcomingBookingsModalOpen, setUpcomingBookingsModalOpen] = useState(false)
+  const [walkInQueueModalOpen, setWalkInQueueModalOpen] = useState(false)
+  const [bookingManagementModalOpen, setBookingManagementModalOpen] = useState(false)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [appointmentsLoading, setAppointmentsLoading] = useState(false)
   const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(null)
@@ -158,7 +166,22 @@ export default function PosPage() {
       setServiceEntryOpen(true)
       return
     }
-  
+    if (item.id === 'appt-calendar') {
+      setCalendarModalOpen(true)
+      return
+    }
+    if (item.id === 'upcoming') {
+      setUpcomingBookingsModalOpen(true)
+      return
+    }
+    if (item.id === 'walk-in-queue') {
+      setWalkInQueueModalOpen(true)
+      return
+    }
+    if (item.id === 'booking-mgmt') {
+      setBookingManagementModalOpen(true)
+      return
+    }
     showSnackbar(`${item.label} coming soon`, 'info')
   }
     
@@ -593,6 +616,26 @@ export default function PosPage() {
         activeAppointmentId={activeAppointmentId}
         loadedAppointmentIds={loadedAppointmentIds}
       />
+      <AppointmentCalendarModal
+  open={calendarModalOpen}
+  onClose={() => setCalendarModalOpen(false)}
+/>
+      <UpcomingBookingsModal
+        open={upcomingBookingsModalOpen}
+        onClose={() => setUpcomingBookingsModalOpen(false)}
+      />
+      <UpcomingBookingsModal
+  open={upcomingBookingsModalOpen}
+  onClose={() => setUpcomingBookingsModalOpen(false)}
+/>
+<WalkInQueueModal
+  open={walkInQueueModalOpen}
+  onClose={() => setWalkInQueueModalOpen(false)}
+/>
+<BookingManagementModal
+  open={bookingManagementModalOpen}
+  onClose={() => setBookingManagementModalOpen(false)}
+/>
       <DiscountModal
         open={discountModalOpen}
         onClose={() => setDiscountModalOpen(false)}
