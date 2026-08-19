@@ -1,4 +1,4 @@
-import { ClipboardList, X } from 'lucide-react'
+import { ClipboardList, X, Eye } from 'lucide-react'
 import { useState } from 'react'
 import Button from '../common/Button'
 
@@ -41,11 +41,25 @@ const TABS = [
     onClose,
   }: BookingManagementModalProps) {
     const [activeTab, setActiveTab] = useState<BookingTab>('all')
+const [search, setSearch] = useState('')
+const [dateFilter, setDateFilter] = useState('')
+const [selectedBooking, setSelectedBooking] = useState<BookingRow | null>(null)
 
-    const rows =
-      activeTab === 'all'
-        ? MOCK_BOOKINGS
-        : MOCK_BOOKINGS.filter((b) => b.status === activeTab)
+// dateFilter is yyyy-mm-dd (native input); dates in data are dd-mm-yyyy
+const normalizeDate = (ddmmyyyy: string) => {
+  const [d, m, y] = ddmmyyyy.split('-')
+  return `${y}-${m}-${d}`
+}
+
+const rows = MOCK_BOOKINGS.filter((b) => {
+  if (activeTab !== 'all' && b.status !== activeTab) return false
+  if (search) {
+    const q = search.toLowerCase()
+    if (!b.clientName.toLowerCase().includes(q) && !b.bookingId.toLowerCase().includes(q)) return false
+  }
+  if (dateFilter && normalizeDate(b.date) !== dateFilter) return false
+  return true
+})
     
     if (!open) return null
   
@@ -60,7 +74,7 @@ const TABS = [
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex h-full max-h-[min(800px,92dvh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
+      <div className="relative flex h-full max-h-[min(800px,92dvh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-salon-border px-5 py-4">
   <div className="flex min-w-0 items-start gap-3">
     <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">
@@ -90,8 +104,34 @@ const TABS = [
 
 {/* Body — scrollable, light gray */}
 <div className="min-h-0 flex-1 overflow-auto bg-slate-50/80">
-  <div className="flex flex-wrap gap-1.5 px-5 py-2.5">
-    {TABS.map((tab) => {
+ {/* Search + Date filter bar */}
+<div className="flex flex-wrap items-center gap-2 px-5 pt-3 pb-1">
+  <input
+    type="text"
+    placeholder="Search client or booking ID…"
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    className="h-9 flex-1 min-w-[180px] rounded-lg border border-salon-border bg-white px-3 text-sm text-salon-text placeholder:text-salon-muted focus:outline-none focus:ring-2 focus:ring-salon-primary/30"
+  />
+  <input
+    type="date"
+    value={dateFilter}
+    onChange={(e) => setDateFilter(e.target.value)}
+    className="h-9 rounded-lg border border-salon-border bg-white px-3 text-sm text-salon-text focus:outline-none focus:ring-2 focus:ring-salon-primary/30"
+  />
+  {(search || dateFilter) && (
+    <button
+      type="button"
+      onClick={() => { setSearch(''); setDateFilter('') }}
+      className="h-9 rounded-lg border border-salon-border bg-white px-3 text-xs text-salon-muted hover:text-salon-text"
+    >
+      Clear
+    </button>
+  )}
+</div>
+
+<div className="flex flex-wrap gap-1.5 px-5 py-2.5">
+  {TABS.map((tab) => {
       const active = activeTab === tab.id
       return (
         <button
@@ -121,7 +161,8 @@ const TABS = [
                 <th className="px-2 py-2 font-semibold">Total Amount</th>
                 <th className="px-2 py-2 font-semibold">Payment Status</th>
                 <th className="px-2 py-2 font-semibold">Booking Channel</th>
-              </tr>
+  <th className="px-2 py-2 font-semibold">Actions</th>
+</tr>
             </thead>
             <tbody>
               {rows.map((b) => (
@@ -131,16 +172,72 @@ const TABS = [
                   <td className="px-2 py-2 tabular-nums">{b.date}</td>
                   <td className="px-2 py-2">{b.service}</td>
                   <td className="px-2 py-2 tabular-nums">₹{b.totalAmount.toLocaleString('en-IN')}</td>
-                  <td className="px-2 py-2">{b.paymentStatus}</td>
-                  <td className="px-2 py-2">{b.bookingChannel}</td>
-                </tr>
+                  <td className="px-2 py-2">
+  <span className={[
+    'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold',
+    b.paymentStatus === 'Paid'
+      ? 'bg-green-100 text-green-700'
+      : b.paymentStatus === 'Unpaid'
+      ? 'bg-amber-100 text-amber-700'
+      : 'bg-rose-100 text-rose-700',
+  ].join(' ')}>
+    {b.paymentStatus}
+  </span>
+</td>
+<td className="px-2 py-2">{b.bookingChannel}</td>
+  <td className="px-2 py-2">
+  <button
+  type="button"
+  title="View Details"
+  onClick={() => setSelectedBooking(b)}
+  className="flex h-7 w-7 items-center justify-center rounded-lg text-salon-muted hover:bg-salon-primary-light hover:text-salon-primary"
+>
+  <Eye size={15} />
+</button>
+  </td>
+</tr>
               ))}
             </tbody>
             </table>
   </div>
   </div>
 
-  <footer className="flex shrink-0 gap-3 border-t border-salon-border px-4 py-3.5 sm:px-5">
+{/* Booking Detail Overlay */}
+{selectedBooking && (
+  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 p-6">
+    <div className="w-full max-w-md rounded-2xl border border-salon-border bg-white p-6 shadow-xl">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg font-bold text-salon-text">Booking Details</h3>
+        <button
+          type="button"
+          onClick={() => setSelectedBooking(null)}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-salon-muted hover:bg-black/5"
+        >
+          <X size={18} />
+        </button>
+      </div>
+      <dl className="space-y-2 text-sm">
+        {([
+          ['Booking ID', selectedBooking.bookingId],
+          ['Client Name', selectedBooking.clientName],
+          ['Date', selectedBooking.date],
+          ['Service', selectedBooking.service],
+          ['Total Amount', `₹${selectedBooking.totalAmount.toLocaleString('en-IN')}`],
+          ['Payment Status', selectedBooking.paymentStatus],
+          ['Booking Channel', selectedBooking.bookingChannel],
+          ['Status', selectedBooking.status],
+        ] as [string, string][]).map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-4 border-b border-salon-border py-1.5 last:border-0">
+            <dt className="font-medium text-salon-muted">{label}</dt>
+            <dd className="text-right font-semibold text-salon-text">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  </div>
+)}
+
+<footer className="flex shrink-0 gap-3 border-t border-salon-border px-4 py-3.5 sm:px-5">
   <Button
     type="button"
     variant="secondary"
