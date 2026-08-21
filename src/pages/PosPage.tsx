@@ -3,7 +3,9 @@ import GroupDetailsModal from '../components/pos/GroupDetailsModal'
 import ProductDetailsModal from '../components/pos/ProductDetailsModal'
 import SubGroupDetailsModal from '../components/pos/SubGroupDetailsModal'
 import ServiceDetailsModal from '../components/pos/ServiceDetailsModal'
-
+import EmployeeListModal from '../components/pos/EmployeeListModal'
+import StaffAttendanceModal from '../components/pos/StaffAttendanceModal'
+import CommissionsModal from '../components/pos/CommissionsModal'
 import type { NavMenuItem } from '../data/navMenu'
 import { useEffect, useMemo, useState } from 'react'
 import PosHeader from '../components/pos/PosHeader'
@@ -29,7 +31,11 @@ import UpcomingBookingsModal from '../components/pos/UpcomingBookingsModal'
 import WalkInQueueModal from '../components/pos/WalkInQueueModal'
 import BookingManagementModal from '../components/pos/BookingManagementModal'
 import DiscountModal from '../components/pos/DiscountModal'
-
+import ServiceAssignmentsModal from '../components/pos/ServiceAssignmentsModal'
+import ProductListModal from '../components/pos/ProductListModal'
+import StockLevelsModal from '../components/pos/StockLevelsModal'
+import StockRequestsModal from '../components/pos/StockRequestsModal'
+import PurchaseManagementModal from '../components/pos/PurchaseManagementModal'
 import PrintOptionsModal, {
   type ReceiptType,
 } from '../components/pos/PrintOptionsModal'
@@ -98,6 +104,10 @@ export default function PosPage() {
   const [billNote, setBillNote] = useState('')
   const [heldBills, setHeldBills] = useState<HeldBill[]>([])
   const [billSeq, setBillSeq] = useState(123)
+  const [employeeListModalOpen, setEmployeeListModalOpen] = useState(false)
+  const [productListModalOpen, setProductListModalOpen] = useState(false)
+  const [stockLevelsModalOpen, setStockLevelsModalOpen] = useState(false)
+  const [stockRequestsModalOpen, setStockRequestsModalOpen] = useState(false)
   const [customerLabel, setCustomerLabel] = useState('Walk-in')
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
   const [calendarModalOpen, setCalendarModalOpen] = useState(false)
@@ -107,6 +117,10 @@ export default function PosPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [appointmentsLoading, setAppointmentsLoading] = useState(false)
   const [activeAppointmentId, setActiveAppointmentId] = useState<string | null>(null)
+  const [staffAttendanceModalOpen, setStaffAttendanceModalOpen] = useState(false)
+  const [commissionsModalOpen, setCommissionsModalOpen] = useState(false)
+  const [serviceAssignmentsModalOpen, setServiceAssignmentsModalOpen] = useState(false)
+  const [purchaseManagementModalOpen, setPurchaseManagementModalOpen] = useState(false)
   const [qtyEdit, setQtyEdit] = useState<{
     id: string
     name: string
@@ -180,6 +194,38 @@ export default function PosPage() {
     }
     if (item.id === 'booking-mgmt') {
       setBookingManagementModalOpen(true)
+      return
+    }
+    if (item.id === 'attendance') {
+      setStaffAttendanceModalOpen(true)
+      return
+    }
+    if (item.id === 'commissions') {
+      setCommissionsModalOpen(true)
+      return
+    }
+    if (item.id === 'employee-list') {
+      setEmployeeListModalOpen(true)
+      return
+    }
+    if (item.id === 'product-list') {
+      setProductListModalOpen(true)
+      return
+    }
+    if (item.id === 'stock-levels') {
+      setStockLevelsModalOpen(true)
+      return
+    }
+    if (item.id === 'stock-requests') {
+      setStockRequestsModalOpen(true)
+      return
+    }
+    if (item.id === 'service-assign') {
+      setServiceAssignmentsModalOpen(true)
+      return
+    }
+    if (item.id === 'purchase') {
+      setPurchaseManagementModalOpen(true)
       return
     }
     showSnackbar(`${item.label} coming soon`, 'info')
@@ -624,9 +670,13 @@ export default function PosPage() {
         open={upcomingBookingsModalOpen}
         onClose={() => setUpcomingBookingsModalOpen(false)}
       />
-      <UpcomingBookingsModal
-  open={upcomingBookingsModalOpen}
-  onClose={() => setUpcomingBookingsModalOpen(false)}
+     <StaffAttendanceModal
+  open={staffAttendanceModalOpen}
+  onClose={() => setStaffAttendanceModalOpen(false)}
+/>
+<CommissionsModal
+  open={commissionsModalOpen}
+  onClose={() => setCommissionsModalOpen(false)}
 />
 <WalkInQueueModal
   open={walkInQueueModalOpen}
@@ -635,6 +685,30 @@ export default function PosPage() {
 <BookingManagementModal
   open={bookingManagementModalOpen}
   onClose={() => setBookingManagementModalOpen(false)}
+/>
+<EmployeeListModal
+  open={employeeListModalOpen}
+  onClose={() => setEmployeeListModalOpen(false)}
+/>
+<ProductListModal
+  open={productListModalOpen}
+  onClose={() => setProductListModalOpen(false)}
+/>
+<StockLevelsModal
+  open={stockLevelsModalOpen}
+  onClose={() => setStockLevelsModalOpen(false)}
+/>
+<StockRequestsModal
+  open={stockRequestsModalOpen}
+  onClose={() => setStockRequestsModalOpen(false)}
+/>
+<ServiceAssignmentsModal
+  open={serviceAssignmentsModalOpen}
+  onClose={() => setServiceAssignmentsModalOpen(false)}
+/>
+<PurchaseManagementModal
+  open={purchaseManagementModalOpen}
+  onClose={() => setPurchaseManagementModalOpen(false)}
 />
       <DiscountModal
         open={discountModalOpen}
