@@ -7,7 +7,8 @@ import {
 } from '../../utils/numericInput'
 import { formatCurrency } from '../../utils/format'
 import type { BillItem } from '../../types/pos'
-import { STORE_VAT_PERCENT } from '../../types/discount'
+import { getShopTaxRate } from '../../utils/receiptSettings'
+import { parseTaxRate } from '../../utils/taxRate'
 
 export interface PriceChangeModalProps {
   open: boolean
@@ -78,8 +79,7 @@ export default function PriceChangeModal({
   }, [open, onClose])
 
   const vatPer = useMemo(() => {
-    const rate = Number(item?.taxRate)
-    return Number.isFinite(rate) && rate >= 0 ? rate : STORE_VAT_PERCENT
+    return parseTaxRate(item?.taxRate, getShopTaxRate())
   }, [item])
 
   const preview = useMemo(() => {

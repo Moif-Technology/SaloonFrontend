@@ -4,6 +4,7 @@
  */
 import { apiService } from '../api/apiService'
 import type { PrintMeta } from '../lib/printBillReceipt'
+import { parseTaxRate } from './taxRate'
 
 export type ReceiptSettings = {
   heading1: string
@@ -14,6 +15,8 @@ export type ReceiptSettings = {
   footer1: string
   footer2: string
   taxRegNo: string
+  /** Shop default tax % from parameter table (`tax1`). */
+  tax1: number
 }
 
 const empty: ReceiptSettings = {
@@ -25,6 +28,7 @@ const empty: ReceiptSettings = {
   footer1: '',
   footer2: '',
   taxRegNo: '',
+  tax1: 0,
 }
 
 let cache: ReceiptSettings | null = null
@@ -61,12 +65,18 @@ export function mapParametersToReceiptSettings(
     footer1: pickText(raw, 'heading6Counter', 'heading6_counter', 'footer1'),
     footer2: pickText(raw, 'heading7Counter', 'heading7_counter', 'footer2'),
     taxRegNo: pickText(raw, 'taxRegistrationNo', 'tax_registration_no', 'taxRegNo', 'trn'),
+    tax1: parseTaxRate(raw.Tax1 ?? raw.tax1),
   }
 }
 
 /** Cached settings for forms (no API). */
 export function peekReceiptSettingsCache(): ReceiptSettings | null {
   return cache ? { ...cache } : null
+}
+
+/** Cached shop tax % from parameter table — sync, no network. */
+export function getShopTaxRate(): number {
+  return cache?.tax1 ?? 0
 }
 
 /** Sync read — used by all print paths; never calls the API. */

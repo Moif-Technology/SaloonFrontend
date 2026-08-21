@@ -60,10 +60,13 @@ export function buildCounterReportHtml(
     reportType?: string
     closeNo?: string
     reportAt?: Date
+    /** Reprint from Counter Close Viewer — prints head "Copy**" */
+    isCopy?: boolean
   } = {},
 ) {
   const reportType = String(meta.reportType ?? data.reportType ?? 'X').toUpperCase()
   const reportAt = meta.reportAt ? new Date(meta.reportAt) : new Date()
+  const isCopy = Boolean(meta.isCopy)
 
   const cashSales = counterCloseNum(data.finalTotalCash ?? data.totalCash)
   const cardSales = counterCloseNum(data.totalCard ?? data.CreditCardAmount)
@@ -124,6 +127,7 @@ export function buildCounterReportHtml(
 
   const extraCss = `
     .xr-title { text-align:center; font-size:${RECEIPT_FONT.title}px; font-weight:700; margin:4px 0; }
+    .xr-copy { text-align:center; font-size:${RECEIPT_FONT.title}px; font-weight:800; margin:2px 0 4px; letter-spacing:1px; }
     .xr-section { text-align:center; font-size:${RECEIPT_FONT.row}px; font-weight:700; margin:6px 0 4px; letter-spacing:0.4px; }
     .xr-row { display:flex; justify-content:space-between; font-size:${RECEIPT_FONT.row}px; font-weight:700; margin:3px 0; }
     .xr-lbl { flex:1; font-weight:700; }
@@ -139,6 +143,7 @@ export function buildCounterReportHtml(
   const bodyHtml = `
   ${companyHeaderHtml(meta)}
   <hr class="dash" />
+  ${isCopy ? '<div class="xr-copy">Copy**</div>' : ''}
   <div class="xr-title">${reportType} - REPORT</div>
   <hr class="dash" />
   <div class="xr-row"><span class="xr-lbl">DATE</span><span class="xr-val">${fmtReportDate(reportAt)}</span></div>
@@ -170,7 +175,7 @@ export function buildCounterReportHtml(
   `
 
   return buildReceiptDocumentHtml({
-    title: `${reportType} Report`,
+    title: isCopy ? `${reportType} Report Copy**` : `${reportType} Report`,
     bodyHtml,
     extraCss,
     autoPrint: false,
@@ -185,6 +190,7 @@ export async function printCounterReport(
     reportType?: string
     closeNo?: string
     reportAt?: Date
+    isCopy?: boolean
   } = {},
 ) {
   const printMeta = receiptPrintMeta({
@@ -194,6 +200,7 @@ export async function printCounterReport(
   const html = buildCounterReportHtml(data, {
     ...printMeta,
     reportAt: meta.reportAt ?? new Date(),
+    isCopy: meta.isCopy,
   })
   const { isNativePosApp, printReceiptHtml } = await import('./androidPrinter')
 
@@ -209,6 +216,7 @@ export async function printCounterReport(
         reportType: meta.reportType,
         closeNo: meta.closeNo,
         reportAt: meta.reportAt ?? new Date(),
+        isCopy: meta.isCopy,
       })
       return
     }

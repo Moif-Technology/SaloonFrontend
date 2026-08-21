@@ -800,6 +800,58 @@ class ApiService {
     throw new Error(httpErrorMessage('Counter close failed', status, data))
   }
 
+  /** GET `/counter/history` — past Z-closes for Counter Close Viewer. */
+  async fetchCounterHistory(opts?: {
+    counterNo?: number
+    dateFrom?: string
+    dateTo?: string
+    limit?: number
+    allStaff?: boolean
+  }): Promise<Record<string, unknown>[]> {
+    const session = getPosSession()
+    const params: Record<string, string | number | undefined> = {
+      counterNo: opts?.counterNo ?? session.counterNo,
+      dateFrom: opts?.dateFrom,
+      dateTo: opts?.dateTo,
+      limit: opts?.limit ?? 150,
+    }
+    if (opts?.allStaff) params.allStaff = 'true'
+    const { status, data } = await request<{ closes?: unknown }>(
+      'GET',
+      salonPosUrl('/counter/history'),
+      { headers: this.bearerHeaders(), params, timeout: 30_000 },
+    )
+    if (status === 401) throw new Error('Unauthorized.')
+    if (status === 403) throw new Error('Counter close history is not enabled for this plan.')
+    if (status !== 200) {
+      throw new Error(httpErrorMessage('Failed to load counter close history', status, data))
+    }
+    const list = Array.isArray(data?.closes)
+      ? data.closes
+      : Array.isArray(data)
+        ? data
+        : []
+    return list as Record<string, unknown>[]
+  }
+
+  /** GET `/counter/history/:closeId` — full close record for reprint. */
+  async fetchCounterCloseDetail(closeId: string | number): Promise<Record<string, unknown>> {
+    const id = String(closeId).trim()
+    if (!id) throw new Error('Close id required')
+    const { status, data } = await request<Record<string, unknown>>(
+      'GET',
+      salonPosUrl(`/counter/history/${encodeURIComponent(id)}`),
+      { headers: this.bearerHeaders(), timeout: 30_000 },
+    )
+    if (status === 401) throw new Error('Unauthorized.')
+    if (status === 404) throw new Error('Counter close record not found')
+    if (status === 403) throw new Error('Counter close detail is not enabled for this plan.')
+    if (status !== 200 || !data || typeof data !== 'object') {
+      throw new Error(httpErrorMessage('Failed to load counter close detail', status, data))
+    }
+    return data
+  }
+
   /** Record petty cash / float movement — feeds Counter Close cashIn / cashOut. */
   async addCashInOut(opts: {
     transactionType: 'CASH_IN' | 'CASH_OUT'

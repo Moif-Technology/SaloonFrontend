@@ -14,6 +14,8 @@ import {
   splitPayModeLabel,
   PM,
 } from '../utils/paymentModes'
+import { getShopTaxRate } from '../utils/receiptSettings'
+import { parseTaxRate } from '../utils/taxRate'
 
 const SunmiPrinter = registerPlugin('SunmiPrinter', {
   web: () => ({
@@ -274,7 +276,7 @@ export function buildBillPrintCommands(bill: ReceiptBill, meta: PrintMeta = {}) 
       ]),
     )
     if (hasTrn) {
-      const vatPer = Number(it.vatPer) || Number(bill.taxRate) || 5
+      const vatPer = parseTaxRate(it.vatPer, parseTaxRate(bill.taxRate, getShopTaxRate()))
       const vatAmt = Number(it.vatAmt) || 0
       lines.push(pairLine('', `VAT@${vatPer}% (${money(vatAmt)})`, 18, 30))
     }
@@ -394,10 +396,12 @@ export function buildCounterClosePrintCommands(
     closeNo?: string
     reportAt?: Date
     counterNo?: string | number
+    isCopy?: boolean
   } = {},
 ) {
   const reportType = String(meta.reportType ?? data.reportType ?? 'X').toUpperCase()
   const reportAt = meta.reportAt ? new Date(meta.reportAt) : new Date()
+  const isCopy = Boolean(meta.isCopy)
 
   const cashSales = Number(data.finalTotalCash ?? data.totalCash ?? data.CashAmount) || 0
   const cardSales = Number(data.totalCard ?? data.CreditCardAmount) || 0
@@ -415,6 +419,7 @@ export function buildCounterClosePrintCommands(
 
   const lines = [
     plainDivider(),
+    ...(isCopy ? [center('Copy**'), plainDivider()] : []),
     center(`${reportType} - REPORT`),
     plainDivider(),
     pairLine('DATE', fmtReportDate(reportAt), 18, 30),
@@ -519,6 +524,7 @@ export async function printAndroidCounterReport(
     closeNo?: string
     reportAt?: Date
     counterNo?: string | number
+    isCopy?: boolean
   } = {},
 ) {
   return printAndroidCommands(buildCounterClosePrintCommands(data, meta))

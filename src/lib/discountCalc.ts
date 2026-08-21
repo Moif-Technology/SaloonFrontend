@@ -58,7 +58,7 @@ export function previewBillDiscount(
   mode: 'pct' | 'amt',
   pctStr: string,
   amtStr: string,
-  defaultTaxRate = 5,
+  defaultTaxRate = 0,
 ) {
   const taxableBase = billTaxableBeforeDiscount(items)
   const { discountAmt, pct, netTaxable } = resolveDiscountOnTaxable(
@@ -95,7 +95,7 @@ export function billDiscountInitialState(taxableBase: number, billDiscountAmt: n
 export function computeBillTotals(
   items: { qty: number; price: number; taxRate?: number }[],
   billDiscountAmt: number,
-  defaultTaxRate = 5,
+  defaultTaxRate = 0,
 ) {
   const subtotal = billTaxableBeforeDiscount(items)
   const taxBefore = roundMoney(

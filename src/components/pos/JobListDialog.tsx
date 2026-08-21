@@ -8,6 +8,7 @@ import { apiService } from '../../api/apiService'
 import { printJobDraft } from '../../lib/printBillReceipt'
 import type { BillItem } from '../../types/pos'
 import { fmtMoney, getPosSession } from '../../utils/posSession'
+import { getShopTaxRate } from '../../utils/receiptSettings'
 
 const ACCENT = '#780829'
 const ACCENT_SOFT = 'rgba(120, 8, 41, 0.07)'
@@ -157,7 +158,7 @@ export function mapJobDetailsToInvoice(
     const lineId = Number(line.LineID ?? line.lineID ?? line.KotChildID ?? 0) || undefined
     const stylistId = Number(line.StylistID ?? line.stylistID ?? 0) || undefined
     const groupId = Number(line.GroupID ?? line.groupId ?? 0) || 0
-    const taxRate = Number(line.Tax1RateC ?? line.tax1RateC ?? 5) || 5
+    const taxRate = getShopTaxRate()
     const lineType = String(line.LineType ?? line.lineType ?? 'PRODUCT')
     const name = String(line.ShortDescription ?? line.shortDescription ?? 'Item')
 

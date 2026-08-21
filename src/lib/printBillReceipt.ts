@@ -27,7 +27,8 @@ import {
   hasCompanyTaxNumber,
 } from './receiptPrintTheme'
 import { getPosSession } from '../utils/posSession'
-import { receiptPrintMeta } from '../utils/receiptSettings'
+import { getShopTaxRate, receiptPrintMeta } from '../utils/receiptSettings'
+import { parseTaxRate } from '../utils/taxRate'
 import {
   isSplitBill,
   normalizeBillPaymentMode,
@@ -213,7 +214,7 @@ export function mapSalonViewerBill(raw: Record<string, unknown>): ReceiptBill {
     remarks: String(master.Remarks ?? master.remarks ?? ''),
     taxableAmt: Number(master.TaxableAmount ?? master.taxableAmt ?? 0),
     taxAmt: Number(master.Tax1AmountM ?? master.taxAmt ?? 0),
-    taxRate: Number(master.Tax1RateM ?? master.taxRate ?? 5),
+    taxRate: parseTaxRate(master.Tax1RateM ?? master.taxRate, getShopTaxRate()),
     discountAmt: Number(master.DiscountAmount ?? master.discountAmt ?? 0),
     roundOff: Number(master.RoundOffAdj ?? master.roundOff ?? 0),
     amount: Number(master.Amount ?? master.amount ?? 0),
@@ -235,7 +236,7 @@ export function mapSalonViewerBill(raw: Record<string, unknown>): ReceiptBill {
       qty: Number(it.Qty ?? it.qty ?? 0),
       unitPrice: Number(it.UnitPrice ?? it.unitPrice ?? 0),
       lineTotal: Number(it.LineTotal ?? it.lineTotal ?? it.SubTotalC ?? 0),
-      vatPer: Number(it.Tax1RateC ?? it.vatPer ?? 5),
+      vatPer: parseTaxRate(it.Tax1RateC ?? it.vatPer, getShopTaxRate()),
       vatAmt: Number(it.Tax1AmountC ?? it.vatAmt ?? 0),
       discount: Number(it.DiscountAmount ?? it.discount ?? it.discountAmount ?? 0),
     })),
@@ -257,7 +258,7 @@ export function billFromSettleResult(
     qty: Number(it.qty) || 0,
     unitPrice: Number(it.unitPrice) || 0,
     lineTotal: Number(it.subTotalC) + Number(it.tax1AmountC ?? 0),
-    vatPer: Number(it.tax1RateC) || 5,
+    vatPer: parseTaxRate(it.tax1RateC, getShopTaxRate()),
     vatAmt: Number(it.tax1AmountC) || 0,
   }))
 
@@ -275,7 +276,7 @@ export function billFromSettleResult(
     remarks: orderData.comments || '',
     taxableAmt: orderData.taxableAmount ?? orderData.subTotal,
     taxAmt: orderData.tax1Amount ?? 0,
-    taxRate: orderData.tax1Rate ?? 5,
+    taxRate: parseTaxRate(orderData.tax1Rate, getShopTaxRate()),
     discountAmt: orderData.discountAmount ?? 0,
     roundOff: orderData.roundOffAdj ?? 0,
     amount: orderData.netAmount,
@@ -333,7 +334,7 @@ export function buildBillReceiptHtml(bill: ReceiptBill, meta: PrintMeta = {}) {
 
   const itemRows = items
     .map((it, idx) => {
-      const vatPer = Number(it.vatPer) || Number(bill.taxRate) || 5
+      const vatPer = parseTaxRate(it.vatPer, parseTaxRate(bill.taxRate, getShopTaxRate()))
       const vatAmt = Number(it.vatAmt) || 0
       const isLast = idx === items.length - 1
       const vatRow = hasTrn
@@ -587,7 +588,7 @@ export function billFromJobDetails(
     const unitPrice = Number(line.UnitPrice ?? line.unitPrice ?? 0) || 0
     const sub = Number(line.SubTotal ?? line.subTotal ?? qty * unitPrice) || 0
     const vatAmt = Number(line.Tax1AmountC ?? line.tax1AmountC ?? 0) || 0
-    const vatPer = Number(line.Tax1RateC ?? line.tax1RateC ?? 5) || 5
+    const vatPer = parseTaxRate(line.Tax1RateC ?? line.tax1RateC, getShopTaxRate())
     const lineTotal =
       Number(line.LineTotal ?? line.lineTotal ?? sub + vatAmt) || sub + vatAmt
     taxable += sub
@@ -637,7 +638,7 @@ export function billFromJobDetails(
     remarks: String(master.Remarks ?? master.remarks ?? ''),
     taxableAmt: taxableFromMaster || taxable,
     taxAmt: taxFromMaster || taxAmt,
-    taxRate: 5,
+    taxRate: getShopTaxRate(),
     discountAmt: 0,
     roundOff: 0,
     amount,

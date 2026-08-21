@@ -7,6 +7,7 @@ import BottomActionBar from '../components/pos/BottomActionBar'
 import SettlementDialog from '../components/settlement/SettlementDialog'
 import JobListDialog, { type LoadedJobInvoice } from '../components/pos/JobListDialog'
 import CounterCloseDialog from '../components/pos/CounterCloseDialog'
+import CounterCloseViewerDialog from '../components/pos/CounterCloseViewerDialog'
 import CashInOutModal from '../components/pos/CashInOutModal'
 import NavDrawer from '../components/pos/NavDrawer'
 import GroupDetailsModal from '../components/pos/GroupDetailsModal'
@@ -17,6 +18,9 @@ import SalesViewerDialog from '../components/pos/SalesViewerDialog'
 import SalesReportDialog, { type SalesReportKind } from '../components/pos/SalesReportDialog'
 import HoldBillModal from '../components/pos/HoldBillModal'
 import BillNoteModal from '../components/pos/BillNoteModal'
+import QuickSettleDialog, {
+  type QuickSettleMethod,
+} from '../components/pos/QuickSettleDialog'
 import CustomerSelectDialog, {
   type SelectedPosCustomer,
 } from '../components/pos/CustomerSelectDialog'
@@ -61,7 +65,7 @@ import {
   printBillFromData,
   printSettlementBill,
 } from '../lib/printBillReceipt'
-import { receiptPrintMeta, loadReceiptSettings } from '../utils/receiptSettings'
+import { receiptPrintMeta, loadReceiptSettings, getShopTaxRate } from '../utils/receiptSettings'
 import { openCashDrawer, openCashDrawerIfNeeded } from '../lib/cashDrawer'
 import { applyNumericKey } from '../utils/numericInput'
 import {
@@ -130,10 +134,12 @@ export default function PosPage() {
 
   const [settleOpen, setSettleOpen] = useState(false)
   const [settleBusy, setSettleBusy] = useState(false)
+  const [quickSettleOpen, setQuickSettleOpen] = useState(false)
   const [orderData, setOrderData] = useState<SettleOrderData | null>(null)
   const [initialMethod, setInitialMethod] = useState<PaymentMethodLabel>('Cash')
   const [jobListOpen, setJobListOpen] = useState(false)
   const [counterCloseOpen, setCounterCloseOpen] = useState(false)
+  const [counterCloseViewerOpen, setCounterCloseViewerOpen] = useState(false)
   const [cashInOutOpen, setCashInOutOpen] = useState(false)
   const [navDrawerOpen, setNavDrawerOpen] = useState(false)
   const [groupEntryOpen, setGroupEntryOpen] = useState(false)
@@ -309,16 +315,20 @@ export default function PosPage() {
       setCounterCloseOpen(true)
       return
     }
+    if (item.action === 'counter-close-viewer' || item.id === 'counter-close-viewer') {
+      setCounterCloseViewerOpen(true)
+      return
+    }
 
     showSnackbar(`${item.label} coming soon`, 'info')
   }
 
-  function handleOpenQuickCash() {
+  function handleOpenSaveBill() {
     if (billItems.length === 0) {
-      showSnackbar('Add items before quick cash', 'warning')
+      showSnackbar('Add items before save bill', 'warning')
       return
     }
-    void directSettle('Cash')
+    setQuickSettleOpen(true)
   }
 
   function handleEditQty(id: string) {
@@ -445,7 +455,7 @@ export default function PosPage() {
   )
 
   const totals = useMemo(() => {
-    const t = computeBillTotals(billItems, discountAmount)
+    const t = computeBillTotals(billItems, discountAmount, getShopTaxRate())
     return {
       subtotal: t.subtotal,
       discount: t.discount,
@@ -493,7 +503,7 @@ export default function PosPage() {
           qty: 1,
           price: unitPrice,
           groupId: Number(product.groupId) || 0,
-          taxRate: product.taxRate ?? 0,
+          taxRate: getShopTaxRate(),
           lineType: product.lineType,
           stylistId: getPosSession().staffId || undefined,
         },
@@ -612,6 +622,7 @@ export default function PosPage() {
       customerId,
       jobId: jobId > 0 ? jobId : undefined,
       discountAmount,
+      taxRate: getShopTaxRate(),
     })
     const result = await apiService.saveKot(payload)
     const newId = Number(
@@ -649,6 +660,7 @@ export default function PosPage() {
         discountAmount,
         customerId,
         customerName: customerLabel || 'Walk-in',
+        taxRate: getShopTaxRate(),
       })
       setOrderData(data)
       setInitialMethod('Cash')
@@ -679,8 +691,8 @@ export default function PosPage() {
     })
   }
 
-  /** Quick Cash / Card — Cash auto-prints receipt and opens drawer. */
-  async function directSettle(method: 'Cash' | 'Card') {
+  /** Quick Cash / Card from Save Bill — no receipt print; Cash opens drawer. */
+  async function directSettle(method: QuickSettleMethod) {
     if (billItems.length === 0 || settleBusy) return
     setSettleBusy(true)
     try {
@@ -692,6 +704,7 @@ export default function PosPage() {
         discountAmount,
         customerId,
         customerName: customerLabel || 'Walk-in',
+        taxRate: getShopTaxRate(),
       })
 
       const paymentMode = method === 'Card' ? 'CREDITCARD' : 'CASH'
@@ -714,18 +727,10 @@ export default function PosPage() {
       })
 
       if (method === 'Cash') {
-        try {
-          await printSettlementBill({
-            salesId: String(result.salesId ?? ''),
-            orderData: payload,
-            settleResult: result as unknown as Record<string, unknown>,
-          })
-        } catch (e) {
-          showSnackbar(e instanceof Error ? e.message : 'Bill print failed', 'warning')
-        }
         await openCashDrawerIfNeeded('CASH', payload.paymentSplits)
       }
 
+      setQuickSettleOpen(false)
       resetBillState()
 
       showSnackbar(
@@ -735,13 +740,18 @@ export default function PosPage() {
       returnToPinLogin()
     } catch (e) {
       showSnackbar(e instanceof Error ? e.message : 'Direct settlement failed', 'error')
+      throw e
     } finally {
       setSettleBusy(false)
     }
   }
 
-  async function handleSaveBill() {
-    if (billItems.length === 0) return
+  /** Park bill as a job (More → Save Job). */
+  async function handleSaveJob() {
+    if (billItems.length === 0) {
+      showSnackbar('Add items before saving a job', 'warning')
+      return
+    }
     try {
       const saved = await ensureJobSaved(billItems)
       resetBillState()
@@ -751,7 +761,7 @@ export default function PosPage() {
       )
       returnToPinLogin()
     } catch (e) {
-      showSnackbar(e instanceof Error ? e.message : 'Save bill failed', 'error')
+      showSnackbar(e instanceof Error ? e.message : 'Save job failed', 'error')
     }
   }
 
@@ -787,6 +797,7 @@ export default function PosPage() {
             discountAmount,
             customerId,
             customerName: customerLabel || 'Walk-in',
+            taxRate: getShopTaxRate(),
           })
         const bill = billFromSettleResult(data, {
           salesId: data.jobId || data.kotId || '',
@@ -831,14 +842,6 @@ export default function PosPage() {
 
   function handleOpenNote() {
     setNoteModalOpen(true)
-  }
-
-  function handleOpenCard() {
-    if (billItems.length === 0) {
-      showSnackbar('Add items before taking card payment', 'warning')
-      return
-    }
-    void directSettle('Card')
   }
 
   async function handleBillPrintLast() {
@@ -1150,9 +1153,8 @@ export default function PosPage() {
           onCustomer={handleOpenCustomer}
           onAppointment={handleOpenAppointments}
           onHoldBill={handleOpenHoldBills}
-          onSaveBill={() => void handleSaveBill()}
-          onQuickCash={handleOpenQuickCash}
-          onCard={handleOpenCard}
+          onSaveBill={handleOpenSaveBill}
+          onSaveJob={() => void handleSaveJob()}
           onBillPrintLast={() => void handleBillPrintLast()}
           onJobList={() => setJobListOpen(true)}
           onSettlement={() => void openSettlement()}
@@ -1165,6 +1167,16 @@ export default function PosPage() {
           time={formatTime(now)}
         />
       </footer>
+
+      <QuickSettleDialog
+        open={quickSettleOpen}
+        amount={totals.total}
+        busy={settleBusy}
+        onClose={() => {
+          if (!settleBusy) setQuickSettleOpen(false)
+        }}
+        onSettle={(method) => directSettle(method)}
+      />
 
       {orderData && settleOpen && (
         <SettlementDialog
@@ -1237,6 +1249,10 @@ export default function PosPage() {
         open={counterCloseOpen}
         onClose={() => setCounterCloseOpen(false)}
         isAdmin={isPosAdmin()}
+      />
+      <CounterCloseViewerDialog
+        open={counterCloseViewerOpen}
+        onClose={() => setCounterCloseViewerOpen(false)}
       />
 
       <GroupDetailsModal
@@ -1348,6 +1364,7 @@ export default function PosPage() {
         onApply={handleApplyDiscount}
         onRemove={handleRemoveDiscount}
         onPromoFeedback={(msg, kind) => showSnackbar(msg, kind)}
+        vatPercent={getShopTaxRate()}
       />
       <PrintOptionsModal
         open={printModalOpen}

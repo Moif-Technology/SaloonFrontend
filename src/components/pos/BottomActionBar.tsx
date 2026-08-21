@@ -8,17 +8,17 @@ import {
   Printer,
   Pause,
   MessageSquare,
-  Banknote,
-  CreditCard,
   MoreHorizontal,
   ClipboardList,
   Tag,
   Archive,
+  Bookmark,
 } from 'lucide-react'
 import Button from '../common/Button'
 
 interface BottomActionBarProps {
   onSettlement: () => void
+  /** Opens quick Cash / Card settle (no print) */
   onSaveBill: () => void
   onAppointment: () => void
   onCustomer: () => void
@@ -27,8 +27,8 @@ interface BottomActionBarProps {
   /** Opens Job List (saved jobs) — occupies Hold Bill slot */
   onJobList: () => void
   onNote: () => void
-  onQuickCash: () => void
-  onCard: () => void
+  /** Park bill as a job (no settlement) — in More menu */
+  onSaveJob: () => void
   /** Optional — QR Pay is hidden for now */
   onQrPay?: () => void
   /** Print last settled invoice for this counter */
@@ -99,8 +99,7 @@ export default function BottomActionBar({
   onDiscount,
   onJobList,
   onNote,
-  onQuickCash,
-  onCard,
+  onSaveJob,
   onBillPrintLast,
   onHoldBill,
   onPriceChange,
@@ -113,6 +112,13 @@ export default function BottomActionBar({
   const closeMore = () => setMoreOpen(false)
 
   const moreItems: MoreMenuItem[] = [
+    {
+      id: 'save-job',
+      label: 'Save Job',
+      icon: <Bookmark size={20} strokeWidth={2.25} />,
+      accent: 'success',
+      onSelect: onSaveJob,
+    },
     ...(onOpenCashDrawer
       ? [
           {
@@ -139,19 +145,6 @@ export default function BottomActionBar({
           } satisfies MoreMenuItem,
         ]
       : []),
-    {
-      id: 'quick-cash',
-      label: 'Quick Cash',
-      icon: <Banknote size={20} strokeWidth={2.25} />,
-      accent: 'success',
-      onSelect: onQuickCash,
-    },
-    {
-      id: 'card',
-      label: 'Card',
-      icon: <CreditCard size={20} strokeWidth={2.25} />,
-      onSelect: onCard,
-    },
     ...(onBillPrintLast
       ? [
           {

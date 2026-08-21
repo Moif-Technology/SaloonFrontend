@@ -1,11 +1,13 @@
 import type { BillItem } from '../types/pos'
 import type { SettleItem, SettleOrderData } from '../types/settlement'
 import { getPosSession, parseProductId } from './posSession'
+import { parseTaxRate, resolveLineTaxRate } from './taxRate'
 
-const DEFAULT_TAX_RATE = 5
+/** Fallback when line has no tax rate — use 0; shop rate comes via opts.taxRate. */
+const DEFAULT_TAX_RATE = 0
 
 function lineTaxRate(item: BillItem, fallback: number) {
-  return item.taxRate ?? fallback
+  return resolveLineTaxRate(item.taxRate, fallback)
 }
 
 export function buildSettleItems(billItems: BillItem[], taxRate = DEFAULT_TAX_RATE): SettleItem[] {
@@ -211,7 +213,7 @@ export function mergeJobSaveLines(
     const price = Number(line.UnitPrice ?? line.unitPrice ?? 0) || 0
     const stylistId = Number(line.StylistID ?? line.stylistId ?? 0) || undefined
     const groupId = Number(line.GroupID ?? line.groupId ?? 0) || 0
-    const taxRate = Number(line.Tax1RateC ?? line.tax1RateC ?? 5) || 5
+    const taxRate = parseTaxRate(line.Tax1RateC ?? line.tax1RateC ?? line.Tax1Rate ?? line.TaxPerc)
     const lineType = String(line.LineType ?? line.lineType ?? 'PRODUCT')
     const name = String(line.ShortDescription ?? line.shortDescription ?? 'Item')
 
@@ -237,7 +239,7 @@ export function mergeJobSaveLines(
       qty: qty || prev?.qty || 1,
       price: price || prev?.price || 0,
       groupId: groupId || prev?.groupId || 0,
-      taxRate: taxRate || prev?.taxRate || 5,
+      taxRate: prev?.taxRate ?? taxRate,
       lineId,
       stylistId: stylistId ?? prev?.stylistId,
       lineType: lineType || prev?.lineType || 'PRODUCT',

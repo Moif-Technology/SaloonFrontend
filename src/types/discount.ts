@@ -38,8 +38,8 @@ export function computeDiscountAmount(
   return Math.min(Math.max(discount.value, 0), subtotal)
 }
 
-/** Store VAT rate (%) — used by DiscountModal preview UI */
-export const STORE_VAT_PERCENT = 5
+/** Store VAT rate (%) — fallback only when shop parameter cache is empty. Prefer getShopTaxRate(). */
+export const STORE_VAT_PERCENT = 0
 
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100

@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { Product, ServiceGroup } from '../types/pos'
+import { parseTaxRate } from './taxRate'
 
 const GROUP_ICONS: LucideIcon[] = [
   Scissors,
@@ -59,14 +60,12 @@ export function mapProductRow(
   const groupId = String(raw.groupId ?? raw.GroupID ?? '').trim()
   const unitPrice =
     Number(inv.unitPrice ?? raw.unitPrice ?? raw.UnitPrice ?? 0) || 0
-  const taxRate =
-    Number(
-      inv.outputTax1Rate ??
-        raw.outputTax1Rate ??
-        raw.tax1Rate ??
-        raw.Tax1Rate ??
-        0,
-    ) || 0
+  const taxRate = parseTaxRate(
+    inv.outputTax1Rate ??
+      raw.outputTax1Rate ??
+      raw.tax1Rate ??
+      raw.Tax1Rate,
+  )
   const productType = String(
     raw.productType ?? raw.ProductType ?? raw.LineType ?? '',
   )
@@ -102,7 +101,9 @@ export function productRowForPos(raw: unknown): Record<string, unknown> {
   const shortName = String(m.shortName ?? m.ShortDescription ?? '').trim()
   const display = shortName || name
   const unitPrice = inv.unitPrice ?? m.unitPrice ?? 0
-  const tax1Rate = inv.outputTax1Rate ?? m.tax1Rate ?? m.Tax1Rate ?? 0
+  const tax1Rate = parseTaxRate(
+    inv.outputTax1Rate ?? m.tax1Rate ?? m.Tax1Rate,
+  )
   const groupId = m.groupId ?? m.GroupID ?? 0
   const subGroupId = m.subgroupId ?? m.SubGroupID ?? 0
   const productType = String(m.productType ?? m.ProductType ?? '').trim()

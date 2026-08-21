@@ -14,7 +14,6 @@ export function appointmentToBillItems(appt: Appointment): BillItem[] {
     qty: s.qty,
     price: s.price,
     lineType: 'SERVICE',
-    taxRate: 5,
     appointmentId: appt.id,
     stylistName: appt.stylistName,
   }))

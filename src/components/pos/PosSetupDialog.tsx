@@ -28,6 +28,7 @@ const empty: ReceiptSettings = {
   footer1: '',
   footer2: '',
   taxRegNo: '',
+  tax1: 0,
 }
 
 const inputClass =

@@ -19,6 +19,7 @@ import {
   ArrowLeftRight,
   Wallet,
   DoorClosed,
+  Archive,
 } from 'lucide-react'
 
 export interface NavMenuItem {
@@ -40,6 +41,7 @@ export interface NavMenuItem {
     | 'salesman-wise-report'
     | 'item-wise-report'
     | 'group-wise-report'
+    | 'counter-close-viewer'
     | 'pos-setup'
     | 'cash-in-out'
     | 'counter-close'
@@ -129,6 +131,13 @@ export const NAV_MENU_SECTIONS: NavMenuSection[] = [
         icon: Layers,
         path: null,
         action: 'group-wise-report',
+      },
+      {
+        id: 'counter-close-viewer',
+        label: 'Counter Close Viewer',
+        icon: Archive,
+        path: null,
+        action: 'counter-close-viewer',
       },
     ],
   },
