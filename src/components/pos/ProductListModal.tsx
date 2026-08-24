@@ -117,6 +117,7 @@ function resetForm() {
   setFormUnitPrice('')
   setFormStockQty('')
   setFormCategoryDropdownOpen(false)
+  setSubmitted(false)
 }
 
 function openAddForm() {
@@ -133,6 +134,7 @@ function openEditForm(p: ProductRow) {
   setFormUnitPrice(String(p.unitPrice))
   setFormStockQty(String(p.stockQty))
   setFormOpen(true)
+  setSubmitted(false)
 }
 
 function handleSave() {

@@ -1,5 +1,5 @@
 import { PackagePlus, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type RequestStatus = 'Pending' | 'Approved' | 'Fulfilled'
 
@@ -36,22 +36,59 @@ export default function StockRequestsModal({
   onClose,
 }: StockRequestsModalProps) {
     const [rows, setRows] = useState(MOCK_REQUESTS)
+    const [requestFormOpen, setRequestFormOpen] = useState(false)
+const [requestItemName, setRequestItemName] = useState('')
+const [requestQuantity, setRequestQuantity] = useState('')
+const [requestSubmitted, setRequestSubmitted] = useState(false)
+const [showToast, setShowToast] = useState(false)
+const [toastMessage, setToastMessage] = useState('')
+useEffect(() => {
+  if (!showToast) return
 
-    function handleNewRequest() {
-      const nextId = `SR-${String(rows.length + 1).padStart(3, '0')}`
-      setRows((prev) => [
-        {
-          id: nextId,
-          requestedBy: 'Staff',
-          itemName: 'New product request',
-          quantity: 1,
-          date: new Date().toISOString().slice(0, 10),
-          status: 'Pending',
-        },
-        ...prev,
-      ])
-    }
+  const timer = setTimeout(() => {
+    setShowToast(false)
+    setToastMessage('')
+  }, 3000)
 
+  return () => clearTimeout(timer)
+}, [showToast])
+
+function handleNewRequest() {
+  setRequestItemName('')
+  setRequestQuantity('')
+  setRequestSubmitted(false)
+  setRequestFormOpen(true)
+}
+function handleSubmitRequest() {
+  setRequestSubmitted(true)
+
+  const itemName = requestItemName.trim()
+  const quantity = Number(requestQuantity)
+
+  if (!itemName || !requestQuantity || quantity <= 0) {
+    return
+  }
+
+  const nextId = `SR-${String(rows.length + 1).padStart(3, '0')}`
+
+  const newRequest: StockRequestRow = {
+    id: nextId,
+    requestedBy: 'Staff',
+    itemName,
+    quantity,
+    date: new Date().toISOString().slice(0, 10),
+    status: 'Pending',
+  }
+
+  setRows((prev) => [newRequest, ...prev])
+  setToastMessage('Stock request submitted successfully')
+setShowToast(true)
+
+  setRequestFormOpen(false)
+  setRequestItemName('')
+  setRequestQuantity('')
+  setRequestSubmitted(false)
+}
     function handleApprove(id: string) {
       setRows((prev) =>
         prev.map((row) =>
@@ -130,49 +167,161 @@ export default function StockRequestsModal({
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <tr key={row.id} className="border-b border-salon-border text-salon-text">
-            <td className="px-3 py-2.5 font-medium tabular-nums">{row.id}</td>
-            <td className="px-3 py-2.5">{row.requestedBy}</td>
-            <td className="px-3 py-2.5 font-medium">{row.itemName}</td>
-            <td className="px-3 py-2.5 tabular-nums">{row.quantity}</td>
-            <td className="px-3 py-2.5 text-salon-muted">{row.date}</td>
-            <td className="px-3 py-2.5">
-              <span
-                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass(row.status)}`}
-              >
-                {row.status}
-              </span>
-            </td>
-            <td className="px-3 py-2.5 text-right text-salon-muted">—</td>
-            <td className="px-3 py-2.5">
-  {row.status === 'Pending' ? (
-    <div className="flex justify-end gap-1.5">
-      <button
-        type="button"
-        onClick={() => handleApprove(row.id)}
-        className="inline-flex h-8 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100"
-      >
-        Approve
-      </button>
-      <button
-        type="button"
-        onClick={() => handleReject(row.id)}
-        className="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-rose-50 px-2.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
-      >
-        Reject
-      </button>
-    </div>
-  ) : (
-    <span className="block text-right text-salon-muted">—</span>
-  )}
-</td>
-          </tr>
-        ))}
-      </tbody>
+  {rows.map((row) => (
+    <tr key={row.id} className="border-b border-salon-border text-salon-text">
+      <td className="px-3 py-2.5 font-medium tabular-nums">{row.id}</td>
+      <td className="px-3 py-2.5">{row.requestedBy}</td>
+      <td className="px-3 py-2.5 font-medium">{row.itemName}</td>
+      <td className="px-3 py-2.5 tabular-nums">{row.quantity}</td>
+      <td className="px-3 py-2.5 text-salon-muted">{row.date}</td>
+      <td className="px-3 py-2.5">
+        <span
+          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass(row.status)}`}
+        >
+          {row.status}
+        </span>
+      </td>
+      {/* Fixed: Single column for Actions to match the header */}
+      <td className="px-3 py-2.5 text-right">
+        {row.status === 'Pending' ? (
+          <div className="flex justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleApprove(row.id)}
+              className="inline-flex h-8 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100"
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              onClick={() => handleReject(row.id)}
+              className="inline-flex h-8 items-center rounded-lg border border-rose-200 bg-rose-50 px-2.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+            >
+              Reject
+            </button>
+          </div>
+        ) : (
+          <span className="text-salon-muted">—</span>
+        )}
+      </td>
+    </tr>
+  ))}
+</tbody>
     </table>
   </div>
 </div>
+{showToast && (
+  <div className="fixed right-6 top-6 z-[60] flex items-center gap-2 rounded-xl bg-[#6b1d2f] px-4 py-3 text-sm font-semibold text-white shadow-lg">
+    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
+      ✓
+    </span>
+    <span>{toastMessage}</span>
+  </div>
+)}
+{requestFormOpen && (
+  <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
+    <div className="w-full max-w-md rounded-2xl border border-salon-border bg-white p-5 shadow-xl sm:p-6">
+
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-salon-text">
+            New Stock Request
+          </h3>
+
+          <p className="mt-0.5 text-xs font-medium text-salon-muted">
+            Request an item from inventory
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setRequestFormOpen(false)
+            setRequestSubmitted(false)
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-salon-muted hover:bg-black/5"
+          aria-label="Close request form"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="space-y-4">
+
+        <label className="block text-sm font-semibold text-salon-text">
+          Item Name *
+
+          <input
+            type="text"
+            value={requestItemName}
+            onChange={(e) => setRequestItemName(e.target.value)}
+            placeholder="e.g. Keratin Shampoo"
+            className={`mt-1 h-10 w-full rounded-xl border-2 bg-white px-3 text-sm font-medium outline-none transition ${
+              requestSubmitted && !requestItemName.trim()
+                ? 'border-red-400 focus:border-red-500'
+                : 'border-salon-border focus:border-salon-primary'
+            }`}
+          />
+
+          {requestSubmitted && !requestItemName.trim() && (
+            <p className="mt-1 text-xs font-medium text-red-500">
+              Item name is required.
+            </p>
+          )}
+        </label>
+
+        <label className="block text-sm font-semibold text-salon-text">
+          Quantity *
+
+          <input
+            type="number"
+            min={1}
+            value={requestQuantity}
+            onChange={(e) => setRequestQuantity(e.target.value)}
+            placeholder="e.g. 10"
+            className={`mt-1 h-10 w-full rounded-xl border-2 bg-white px-3 text-sm font-medium outline-none transition ${
+              requestSubmitted &&
+              (!requestQuantity || Number(requestQuantity) <= 0)
+                ? 'border-red-400 focus:border-red-500'
+                : 'border-salon-border focus:border-salon-primary'
+            }`}
+          />
+
+          {requestSubmitted &&
+            (!requestQuantity || Number(requestQuantity) <= 0) && (
+              <p className="mt-1 text-xs font-medium text-red-500">
+                Enter a valid quantity.
+              </p>
+            )}
+        </label>
+
+      </div>
+
+      <div className="mt-5 flex gap-3">
+
+        <button
+          type="button"
+          onClick={() => {
+            setRequestFormOpen(false)
+            setRequestSubmitted(false)
+          }}
+          className="h-9 w-full rounded-lg border border-salon-border bg-white px-4 text-sm font-semibold text-salon-text transition hover:bg-slate-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={handleSubmitRequest}
+          className="h-9 w-full rounded-lg bg-[#6b1d2f] px-4 text-sm font-semibold text-white transition hover:opacity-90"
+        >
+          Submit Request
+        </button>
+
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   )

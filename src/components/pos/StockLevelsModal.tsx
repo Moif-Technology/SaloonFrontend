@@ -19,8 +19,8 @@ const MOCK_STOCK: StockRow[] = [
 ]
 
 function getStockStatus(row: StockRow): StockStatus {
-  if (row.currentStock <= 0) return 'Out of Stock'
-  if (row.currentStock < row.minThreshold) return 'Low Stock'
+  if (row.currentStock === 0) return 'Out of Stock'
+  if (row.currentStock <= row.minThreshold) return 'Low Stock'
   return 'In Stock'
 }
 
@@ -40,10 +40,27 @@ export default function StockLevelsModal({
 
 }: StockLevelsModalProps) {
     const [rows, setRows] = useState(MOCK_STOCK)
-  
+    const [stockFilter, setStockFilter] = useState<
+  'all' | 'low-stock' | 'out-of-stock'
+>('all')
+
     const totalProducts = rows.length
     const inStockCount = rows.filter((r) => getStockStatus(r) === 'In Stock').length
     const lowStockCount = rows.filter((r) => getStockStatus(r) === 'Low Stock').length
+    const outOfStockCount = rows.filter(
+      (r) => getStockStatus(r) === 'Out of Stock',
+    ).length
+    const filteredRows = rows.filter((row) => {
+      if (stockFilter === 'low-stock') {
+        return getStockStatus(row) === 'Low Stock'
+      }
+    
+      if (stockFilter === 'out-of-stock') {
+        return getStockStatus(row) === 'Out of Stock'
+      }
+    
+      return true
+    })
     function adjustStock(id: string, delta: number) {
         setRows((prev) =>
           prev.map((row) =>
@@ -111,15 +128,22 @@ export default function StockLevelsModal({
       
 
 <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
-  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-    <div className="rounded-xl border border-salon-border bg-white px-4 py-3">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-salon-muted">
-        Total Products
-      </p>
-      <p className="mt-1 text-2xl font-bold tabular-nums text-salon-text">
-  {totalProducts}
-</p>
-    </div>
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+<button
+  type="button"
+  onClick={() => setStockFilter('all')}
+  className={`rounded-xl border border-salon-border bg-white px-4 py-3 text-left cursor-pointer transition hover:shadow-md ${
+    stockFilter === 'all' ? 'ring-2 ring-salon-primary/20' : ''
+  }`}
+>
+  <p className="text-[11px] font-bold uppercase tracking-wide text-salon-muted">
+    Total Products
+  </p>
+
+  <p className="mt-1 text-2xl font-bold tabular-nums text-salon-text">
+    {totalProducts}
+  </p>
+</button>
     <div className="rounded-xl border border-salon-border bg-white px-4 py-3">
       <p className="text-[11px] font-bold uppercase tracking-wide text-salon-muted">
         In Stock
@@ -128,16 +152,68 @@ export default function StockLevelsModal({
   {inStockCount}
 </p>
     </div>
-    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-      <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">
-        Low Stock Alerts
-      </p>
-      <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700">
-  {lowStockCount}
-</p>
+    <button
+  type="button"
+  onClick={() => setStockFilter('low-stock')}
+  className={`rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left cursor-pointer transition hover:shadow-md ${
+    stockFilter === 'low-stock'
+      ? 'ring-2 ring-amber-300'
+      : ''
+  }`}
+>
+  <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700">
+    Low Stock Alerts
+  </p>
+
+  <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700">
+    {lowStockCount}
+  </p>
+</button>
+<button
+  type="button"
+  onClick={() => setStockFilter('out-of-stock')}
+  className={`rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-left cursor-pointer transition hover:shadow-md ${
+    stockFilter === 'out-of-stock'
+      ? 'ring-2 ring-rose-300'
+      : ''
+  }`}
+>
+  <p className="text-[11px] font-bold uppercase tracking-wide text-rose-700">
+    Out of Stock
+  </p>
+
+  <p className="mt-1 text-2xl font-bold tabular-nums text-rose-700">
+    {outOfStockCount}
+  </p>
+</button>
     </div>
+    {stockFilter !== 'all' && (
+  <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
+    <div className="flex items-center gap-2 text-sm font-medium text-rose-900">
+      <span>
+        Showing{' '}
+        <span className="font-bold">
+          {stockFilter === 'low-stock'
+            ? 'Low Stock'
+            : 'Out of Stock'}
+        </span>{' '}
+        items
+      </span>
+
+      <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-rose-700">
+        {filteredRows.length}
+      </span>
     </div>
 
+    <button
+      type="button"
+      onClick={() => setStockFilter('all')}
+      className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-900 transition hover:bg-rose-100"
+    >
+      Clear Filter
+    </button>
+  </div>
+)}
 <div className="mt-4 overflow-x-auto rounded-xl border border-salon-border bg-white">
   <table className="w-full min-w-[640px] border-collapse text-left text-sm">
     <thead>
@@ -145,58 +221,89 @@ export default function StockLevelsModal({
         <th className="px-3 py-2">Product Name</th>
         <th className="px-3 py-2">Current Stock</th>
         <th className="px-3 py-2">Minimum Threshold</th>
-        <th className="px-3 py-2">Status</th>
-        <th className="px-3 py-2 text-right">Actions</th>
-      </tr>
+  <th className="px-3 py-2">Status</th>
+  <th className="px-3 py-2 text-center">Actions</th>
+</tr>
     </thead>
-    <tbody>
-      {rows.map((row) => {
-        const status = getStockStatus(row)
-        return (
-          <tr key={row.id} className="border-b border-salon-border text-salon-text">
-            <td className="px-3 py-2.5 font-medium">{row.name}</td>
-            <td className="px-3 py-2.5 tabular-nums">{row.currentStock}</td>
-            <td className="px-3 py-2.5 tabular-nums text-salon-muted">
-              {row.minThreshold}
-            </td>
-            <td className="px-3 py-2.5">
-              <span
-                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass(status)}`}
+ <tbody>
+  {filteredRows.length === 0 ? (
+    <tr>
+      <td
+        colSpan={5}
+        className="px-3 py-10 text-center text-sm font-medium text-salon-muted"
+      >
+        {stockFilter === 'low-stock'
+          ? 'No low-stock products found.'
+          : stockFilter === 'out-of-stock'
+            ? 'No out-of-stock products found.'
+            : 'No products found.'}
+      </td>
+    </tr>
+  ) : (
+    filteredRows.map((row) => {
+      const status = getStockStatus(row)
+    
+      return (
+        <tr
+          key={row.id}
+          className="border-b border-salon-border text-salon-text"
+        >
+          <td className="px-3 py-2.5 font-medium">
+            {row.name}
+          </td>
+    
+          <td className="px-3 py-2.5 tabular-nums">
+            {row.currentStock}
+          </td>
+    
+          <td className="px-3 py-2.5 tabular-nums text-salon-muted">
+            {row.minThreshold}
+          </td>
+    
+          <td className="px-3 py-2.5">
+            <span
+              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass(
+                status,
+              )}`}
+            >
+              {status}
+            </span>
+          </td>
+    
+          <td className="px-3 py-2.5">
+            <div className="flex justify-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => adjustStock(row.id, -1)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-salon-border text-sm font-semibold text-salon-text hover:bg-black/5"
+                aria-label={`Decrease ${row.name} stock`}
               >
-                {status}
-              </span>
-            </td>
-            <td className="px-3 py-2.5">
-  <div className="flex justify-end gap-1.5">
-    <button
-      type="button"
-      onClick={() => adjustStock(row.id, -1)}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-salon-border text-sm font-semibold text-salon-text hover:bg-black/5"
-      aria-label={`Decrease ${row.name} stock`}
-    >
-      −
-    </button>
-    <button
-      type="button"
-      onClick={() => adjustStock(row.id, 1)}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-salon-border text-sm font-semibold text-salon-text hover:bg-black/5"
-      aria-label={`Increase ${row.name} stock`}
-    >
-      +
-    </button>
-    <button
-      type="button"
-      onClick={() => restock(row.id)}
-      className="inline-flex h-8 items-center rounded-lg bg-[#6b1d2f] px-2.5 text-[11px] font-semibold text-white hover:opacity-90"
-    >
-      Restock
-    </button>
-  </div>
-</td>
-          </tr>
-        )
-      })}
-    </tbody>
+                −
+              </button>
+    
+              <button
+                type="button"
+                onClick={() => adjustStock(row.id, 1)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-salon-border text-sm font-semibold text-salon-text hover:bg-black/5"
+                aria-label={`Increase ${row.name} stock`}
+              >
+                +
+              </button>
+    
+              <button
+                type="button"
+                onClick={() => restock(row.id)}
+                className="inline-flex h-8 items-center rounded-lg bg-[#6b1d2f] px-2.5 text-[11px] font-semibold text-white hover:opacity-90"
+              >
+                Restock
+              </button>
+            </div>
+          </td>
+        </tr>
+      )
+    })
+  )}
+</tbody>
   </table>
 </div>
 </div>
