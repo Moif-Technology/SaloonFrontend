@@ -36,6 +36,11 @@ import ProductListModal from '../components/pos/ProductListModal'
 import StockLevelsModal from '../components/pos/StockLevelsModal'
 import StockRequestsModal from '../components/pos/StockRequestsModal'
 import PurchaseManagementModal from '../components/pos/PurchaseManagementModal'
+import SalesReportsModal from '../components/pos/SalesReportsModal'     
+import DailyClosingModal from '../components/pos/DailyClosingModal'
+import TaxSummaryModal from '../components/pos/TaxSummaryModal'
+import ServiceReportsModal from '../components/pos/ServiceReportsModal'
+import InventoryReportsModal from '../components/pos/InventoryReportsModal'
 import PrintOptionsModal, {
   type ReceiptType,
 } from '../components/pos/PrintOptionsModal'
@@ -121,6 +126,11 @@ export default function PosPage() {
   const [commissionsModalOpen, setCommissionsModalOpen] = useState(false)
   const [serviceAssignmentsModalOpen, setServiceAssignmentsModalOpen] = useState(false)
   const [purchaseManagementModalOpen, setPurchaseManagementModalOpen] = useState(false)
+  const [salesReportsModalOpen, setSalesReportsModalOpen] = useState(false)    
+  const [dailyClosingModalOpen, setDailyClosingModalOpen] = useState(false)
+  const [taxSummaryModalOpen, setTaxSummaryModalOpen] = useState(false)
+  const [serviceReportsModalOpen, setServiceReportsModalOpen] = useState(false)
+  const [inventoryReportsModalOpen, setInventoryReportsModalOpen] = useState(false)
   const [qtyEdit, setQtyEdit] = useState<{
     id: string
     name: string
@@ -226,6 +236,26 @@ export default function PosPage() {
     }
     if (item.id === 'purchase') {
       setPurchaseManagementModalOpen(true)
+      return
+    }
+    if (item.id === 'sales-reports') {
+      setSalesReportsModalOpen(true)
+      return
+    }
+    if (item.id === 'daily-closing') {
+      setDailyClosingModalOpen(true)
+      return
+    }
+    if (item.id === 'tax-summary') {
+      setTaxSummaryModalOpen(true)
+      return
+    }
+    if (item.id === 'service-reports') {
+      setServiceReportsModalOpen(true)
+      return
+    }
+    if (item.id === 'inventory-reports') {
+      setInventoryReportsModalOpen(true)
       return
     }
     showSnackbar(`${item.label} coming soon`, 'info')
@@ -709,6 +739,26 @@ export default function PosPage() {
 <PurchaseManagementModal
   open={purchaseManagementModalOpen}
   onClose={() => setPurchaseManagementModalOpen(false)}
+/>
+<SalesReportsModal
+  open={salesReportsModalOpen}
+  onClose={() => setSalesReportsModalOpen(false)}
+/>
+<DailyClosingModal
+  open={dailyClosingModalOpen}
+  onClose={() => setDailyClosingModalOpen(false)}
+/>
+<TaxSummaryModal
+  open={taxSummaryModalOpen}
+  onClose={() => setTaxSummaryModalOpen(false)}
+/>
+<ServiceReportsModal
+  open={serviceReportsModalOpen}
+  onClose={() => setServiceReportsModalOpen(false)}
+/>
+<InventoryReportsModal
+  open={inventoryReportsModalOpen}
+  onClose={() => setInventoryReportsModalOpen(false)}
 />
       <DiscountModal
         open={discountModalOpen}
