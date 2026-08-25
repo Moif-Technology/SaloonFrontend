@@ -2,9 +2,12 @@ import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
   Download,
-  Package,
+  Warehouse,
   Search,
   X,
+  Printer,
+  RotateCcw,
+  CheckCircle2,
 } from 'lucide-react'
 import { useSnackbar } from '../../context/SnackbarContext'
 
@@ -159,9 +162,23 @@ export default function InventoryReportsModal({
 
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [categoryFilter, setCategoryFilter] = useState('All')
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [pendingAction, setPendingAction] =
-    useState<AuditAction | null>(null)
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false)
+  const [pendingAction, setPendingAction] = useState<AuditAction | null>(null)
+
+  const categories = useMemo(() => {
+    return [
+      'All',
+      ...Array.from(
+        new Set(
+          MOCK_INVENTORY_REPORTS.map(
+            (item) => item.category,
+          ),
+        ),
+      ),
+    ]
+  }, [])
 
   const filteredInventory = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -180,9 +197,13 @@ export default function InventoryReportsModal({
         (statusFilter === 'Out of Stock' && status === 'out') ||
         (statusFilter === 'Healthy' && status === 'healthy')
 
-      return matchesSearch && matchesStatus
+      const matchesCategory =
+        categoryFilter === 'All' ||
+        item.category === categoryFilter
+
+      return matchesSearch && matchesStatus && matchesCategory
     })
-  }, [searchQuery, statusFilter])
+  }, [searchQuery, statusFilter, categoryFilter])
 
   const totalItems = filteredInventory.length
 
@@ -216,8 +237,7 @@ export default function InventoryReportsModal({
   const totalValuation = useMemo(
     () =>
       filteredInventory.reduce(
-        (sum, item) =>
-          sum + item.currentStock * item.unitCost,
+        (sum, item) => sum + item.currentStock * item.unitCost,
         0,
       ),
     [filteredInventory],
@@ -238,6 +258,10 @@ export default function InventoryReportsModal({
       ).length,
     [filteredInventory],
   )
+
+  function handlePrint() {
+    showSnackbar('Inventory report sent to printer', 'success')
+  }
 
   function handleExportRequest() {
     setPendingAction('export')
@@ -273,65 +297,72 @@ export default function InventoryReportsModal({
     setPendingAction(null)
   }
 
+  function handleResetRequest() {
+    setConfirmResetOpen(true)
+  }
+
+  function handleConfirmReset() {
+    setSearchQuery('')
+    setStatusFilter('All')
+    setCategoryFilter('All')
+    setConfirmResetOpen(false)
+    showSnackbar('Inventory report filters cleared', 'info')
+  }
+
+  function handleCancelReset() {
+    setConfirmResetOpen(false)
+  }
+
   if (!open) return null
-
-  const confirmationTitle =
-    pendingAction === 'audit'
-      ? 'Finalize Stock Audit?'
-      : 'Export Inventory Report?'
-
-  const confirmationDescription =
-    pendingAction === 'audit'
-      ? 'Are you sure you want to finalize this inventory stock audit? The current stock information will be treated as reviewed.'
-      : 'Are you sure you want to export the current inventory report with the selected filters?'
 
   return (
     <>
       {/* Main Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)]">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        onClick={onClose}
+      >
+        <div
+          className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)]"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
-          <div className="flex shrink-0 items-start justify-between border-b border-slate-200 px-6 py-5">
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#6b1d2f]/10 text-[#6b1d2f]">
-                  <Package className="h-5 w-5" />
-                </div>
-
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight text-slate-900">
-                    Inventory Reports
-                  </h2>
-
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    Review stock movement, current inventory,
-                    valuation, and stock alerts.
-                  </p>
-                </div>
+          <header className="flex shrink-0 items-center justify-between border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-6 py-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#6b1d2f] text-white shadow-sm">
+                <Warehouse size={22} />
+              </span>
+              <div>
+                <h2 className="text-xl font-bold text-salon-text">
+                  Inventory Reports
+                </h2>
+                <p className="text-sm text-salon-muted">
+                  Review stock movement, current inventory, valuation, and stock alerts.
+                </p>
               </div>
             </div>
 
             <button
               type="button"
               onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-salon-muted hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f]"
               aria-label="Close inventory reports"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             >
-              <X className="h-5 w-5" />
+              <X size={22} />
             </button>
-          </div>
+          </header>
 
           {/* Filters */}
           <div className="shrink-0 px-6 py-4">
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 xl:flex-row xl:items-end xl:justify-between">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {/* Search */}
-                <div className="sm:min-w-[280px]">
+                <div className="lg:min-w-[260px]">
                   <label
                     htmlFor="inventory-report-search"
                     className="mb-1.5 block text-xs font-semibold text-slate-700"
                   >
-                    Search Item
+                    Search Item / Category
                   </label>
 
                   <div className="relative">
@@ -344,13 +375,38 @@ export default function InventoryReportsModal({
                       onChange={(event) =>
                         setSearchQuery(event.target.value)
                       }
-                      placeholder="Search item or category..."
+                      placeholder="Search..."
                       className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
                     />
                   </div>
                 </div>
 
-                {/* Status */}
+                {/* Category Filter */}
+                <div>
+                  <label
+                    htmlFor="inventory-report-category"
+                    className="mb-1.5 block text-xs font-semibold text-slate-700"
+                  >
+                    Category
+                  </label>
+
+                  <select
+                    id="inventory-report-category"
+                    value={categoryFilter}
+                    onChange={(event) =>
+                      setCategoryFilter(event.target.value)
+                    }
+                    className="h-10 w-full min-w-[160px] rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
+                  >
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Filter */}
                 <div>
                   <label
                     htmlFor="inventory-status-filter"
@@ -365,33 +421,42 @@ export default function InventoryReportsModal({
                     onChange={(event) =>
                       setStatusFilter(event.target.value)
                     }
-                    className="h-10 w-full min-w-[180px] rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
+                    className="h-10 w-full min-w-[160px] rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
                   >
                     <option value="All">All Items</option>
                     <option value="Healthy">Healthy Stock</option>
                     <option value="Low Stock">Low Stock</option>
-                    <option value="Out of Stock">
-                      Out of Stock
-                    </option>
+                    <option value="Out of Stock">Out of Stock</option>
                   </select>
                 </div>
               </div>
 
-              {/* Alerts */}
-              <div className="flex flex-wrap items-center gap-2">
-                {lowStockCount > 0 && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    {lowStockCount} Low Stock
-                  </span>
-                )}
+              {/* Filter Actions */}
+              <div className="flex items-center gap-3">
+                {/* Badges placed horizontally side by side */}
+                <div className="flex items-center gap-2">
+                  {lowStockCount > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 border border-amber-200">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      {lowStockCount} Low
+                    </span>
+                  )}
+                  {outOfStockCount > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 border border-red-200">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      {outOfStockCount} Out
+                    </span>
+                  )}
+                </div>
 
-                {outOfStockCount > 0 && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    {outOfStockCount} Out of Stock
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={handleResetRequest}
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset
+                </button>
               </div>
             </div>
           </div>
@@ -399,51 +464,28 @@ export default function InventoryReportsModal({
           {/* Summary Metrics */}
           <div className="grid shrink-0 grid-cols-2 gap-3 px-6 pb-4 lg:grid-cols-5">
             <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-medium text-slate-500">
-                Total Items
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-slate-900">
-                {totalItems}
-              </p>
+              <p className="text-xs font-medium text-slate-500">Total Items</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{totalItems}</p>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-medium text-slate-500">
-                Stock In
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-slate-900">
-                {totalStockIn}
-              </p>
+              <p className="text-xs font-medium text-slate-500">Stock In</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{totalStockIn}</p>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-medium text-slate-500">
-                Stock Out
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-slate-900">
-                {totalStockOut}
-              </p>
+              <p className="text-xs font-medium text-slate-500">Stock Out</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{totalStockOut}</p>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-medium text-slate-500">
-                Current Stock
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-slate-900">
-                {totalCurrentStock}
-              </p>
+              <p className="text-xs font-medium text-slate-500">Current Stock</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{totalCurrentStock}</p>
             </div>
 
-            <div className="rounded-xl border border-[#6b1d2f]/15 bg-[#6b1d2f]/5 p-4">
-              <p className="text-xs font-medium text-slate-500">
-                Inventory Valuation
-              </p>
-
-              <p className="mt-1 text-lg font-bold text-[#6b1d2f]">
+            <div className="col-span-2 rounded-xl border border-[#6b1d2f]/15 bg-[#6b1d2f]/5 p-4 lg:col-span-1">
+              <p className="text-xs font-medium text-slate-500">Inventory Valuation</p>
+              <p className="mt-1 text-xl font-bold text-[#6b1d2f]">
                 {formatCurrency(totalValuation)}
               </p>
             </div>
@@ -458,29 +500,23 @@ export default function InventoryReportsModal({
                     <th className="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-600">
                       Item Name
                     </th>
-
                     <th className="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-600">
                       Category
                     </th>
-
                     <th className="whitespace-nowrap px-4 py-3 text-center text-xs font-bold text-slate-600">
                       Stock In
                     </th>
-
                     <th className="whitespace-nowrap px-4 py-3 text-center text-xs font-bold text-slate-600">
                       Stock Out
                     </th>
-
                     <th className="whitespace-nowrap px-4 py-3 text-center text-xs font-bold text-slate-600">
                       Current Stock
                     </th>
-
                     <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-bold text-slate-600">
-                      Valuation
+                      Unit Cost
                     </th>
-
-                    <th className="whitespace-nowrap px-4 py-3 text-center text-xs font-bold text-slate-600">
-                      Status
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-bold text-slate-600">
+                      Total Value
                     </th>
                   </tr>
                 </thead>
@@ -489,100 +525,63 @@ export default function InventoryReportsModal({
                   {filteredInventory.length > 0 ? (
                     filteredInventory.map((item) => {
                       const status = getStockStatus(item)
-
                       return (
                         <tr
                           key={item.id}
-                          className={`transition ${
-                            status === 'out'
-                              ? 'bg-red-50/50 hover:bg-red-50'
-                              : status === 'low'
-                                ? 'bg-amber-50/40 hover:bg-amber-50/60'
-                                : 'hover:bg-slate-50/70'
-                          }`}
+                          className="transition hover:bg-slate-50/70"
                         >
                           <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-800">
                             <div className="flex items-center gap-2">
-                              {status !== 'healthy' && (
-                                <AlertTriangle
-                                  className={`h-4 w-4 shrink-0 ${
-                                    status === 'out'
-                                      ? 'text-red-500'
-                                      : 'text-amber-500'
-                                  }`}
-                                />
-                              )}
-
                               {item.itemName}
+                              {status === 'out' && (
+                                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700">
+                                  OUT
+                                </span>
+                              )}
+                              {status === 'low' && (
+                                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                                  LOW
+                                </span>
+                              )}
                             </div>
                           </td>
 
-                          <td className="px-4 py-3 text-slate-600">
-                            {item.category}
+                          <td className="px-4 py-3">
+                            <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                              {item.category}
+                            </span>
                           </td>
 
-                          <td className="px-4 py-3 text-center font-medium text-emerald-700">
+                          <td className="px-4 py-3 text-center text-slate-700">
                             {item.stockIn}
                           </td>
 
-                          <td className="px-4 py-3 text-center font-medium text-red-600">
+                          <td className="px-4 py-3 text-center text-slate-700">
                             {item.stockOut}
                           </td>
 
-                          <td
-                            className={`px-4 py-3 text-center font-bold ${
-                              status === 'out'
-                                ? 'text-red-700'
-                                : status === 'low'
-                                  ? 'text-amber-700'
-                                  : 'text-slate-800'
-                            }`}
-                          >
+                          <td className="px-4 py-3 text-center font-semibold text-slate-900">
                             {item.currentStock}
                           </td>
 
-                          <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-[#6b1d2f]">
-                            {formatCurrency(
-                              item.currentStock *
-                                item.unitCost,
-                            )}
+                          <td className="whitespace-nowrap px-4 py-3 text-right text-slate-700">
+                            {formatCurrency(item.unitCost)}
                           </td>
 
-                          <td className="px-4 py-3 text-center">
-                            {status === 'out' && (
-                              <span className="inline-flex rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700">
-                                Out of Stock
-                              </span>
-                            )}
-
-                            {status === 'low' && (
-                              <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">
-                                Low Stock
-                              </span>
-                            )}
-
-                            {status === 'healthy' && (
-                              <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                                Healthy
-                              </span>
-                            )}
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-[#6b1d2f]">
+                            {formatCurrency(item.currentStock * item.unitCost)}
                           </td>
                         </tr>
                       )
                     })
                   ) : (
                     <tr>
-                      <td
-                        colSpan={7}
-                        className="px-4 py-12 text-center"
-                      >
+                      <td colSpan={7} className="px-4 py-12 text-center">
                         <p className="text-sm font-semibold text-slate-700">
                           No inventory items found
                         </p>
-
                         <p className="mt-1 text-xs text-slate-500">
-                          Try changing your search or stock
-                          status filter.
+                          Try changing your search or filters.
                         </p>
                       </td>
                     </tr>
@@ -598,24 +597,21 @@ export default function InventoryReportsModal({
                       >
                         Total
                       </td>
-
-                      <td className="px-4 py-3 text-center text-sm font-bold text-emerald-700">
+                      <td className="px-4 py-3 text-center text-sm font-bold text-slate-900">
                         {totalStockIn}
                       </td>
-
-                      <td className="px-4 py-3 text-center text-sm font-bold text-red-600">
+                      <td className="px-4 py-3 text-center text-sm font-bold text-slate-900">
                         {totalStockOut}
                       </td>
-
                       <td className="px-4 py-3 text-center text-sm font-bold text-slate-900">
                         {totalCurrentStock}
                       </td>
-
+                      <td className="px-4 py-3 text-right text-xs font-bold text-slate-500">
+                        -
+                      </td>
                       <td className="px-4 py-3 text-right text-sm font-bold text-[#6b1d2f]">
                         {formatCurrency(totalValuation)}
                       </td>
-
-                      <td />
                     </tr>
                   </tfoot>
                 )}
@@ -626,8 +622,8 @@ export default function InventoryReportsModal({
           {/* Footer */}
           <div className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-white px-6 py-4">
             <p className="text-xs text-slate-500">
-              Showing {filteredInventory.length} inventory
-              item{filteredInventory.length === 1 ? '' : 's'}
+              Showing {filteredInventory.length} item
+              {filteredInventory.length === 1 ? '' : 's'}
             </p>
 
             <div className="flex items-center gap-2">
@@ -641,10 +637,20 @@ export default function InventoryReportsModal({
 
               <button
                 type="button"
-                onClick={handleAuditRequest}
-                className="rounded-lg border border-[#6b1d2f] px-4 py-2 text-sm font-semibold text-[#6b1d2f] transition hover:bg-[#6b1d2f]/5"
+                onClick={handlePrint}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
-                Stock Audit
+                <Printer className="h-4 w-4" />
+                Print
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAuditRequest}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <CheckCircle2 className="h-4 w-4 text-[#6b1d2f]" />
+                Audit Stock
               </button>
 
               <button
@@ -653,32 +659,33 @@ export default function InventoryReportsModal({
                 className="inline-flex items-center gap-2 rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#581725] focus:outline-none focus:ring-2 focus:ring-[#6b1d2f]/20"
               >
                 <Download className="h-4 w-4" />
-                Export Report
+                Export
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Project-themed Confirmation Modal */}
+      {/* Confirmation Modal */}
       {confirmOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-[#24171b] p-5 shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#6b1d2f]/20 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.15)]">
             <div className="mb-5">
-              <h3 className="text-base font-bold text-white">
-                {confirmationTitle}
+              <h3 className="text-lg font-bold text-salon-text">
+                {pendingAction === 'audit' ? 'Finalize Stock Audit?' : 'Export Inventory Report?'}
               </h3>
-
-              <p className="mt-1.5 text-sm leading-5 text-white/65">
-                {confirmationDescription}
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                {pendingAction === 'audit'
+                  ? 'Are you sure you want to finalize this inventory stock audit? The current stock information will be treated as reviewed.'
+                  : 'Are you sure you want to export the current inventory report with the selected filters?'}
               </p>
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={handleCancelAction}
-                className="rounded-lg border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -686,7 +693,41 @@ export default function InventoryReportsModal({
               <button
                 type="button"
                 onClick={handleConfirmAction}
-                className="rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#581725]"
+                className="rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#581725] focus:outline-none focus:ring-2 focus:ring-[#6b1d2f]/20"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirmation Modal */}
+      {confirmResetOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#6b1d2f]/20 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.15)]">
+            <div className="mb-5">
+              <h3 className="text-lg font-bold text-salon-text">
+                Reset Inventory Filters?
+              </h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                This will clear the search, category, and status filters and restore the complete inventory report.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={handleCancelReset}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmReset}
+                className="rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#581725] focus:outline-none focus:ring-2 focus:ring-[#6b1d2f]/20"
               >
                 Confirm
               </button>

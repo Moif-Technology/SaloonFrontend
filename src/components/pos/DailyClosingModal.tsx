@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { X } from 'lucide-react'
+import { NotebookPen, X } from 'lucide-react'
 import { useSnackbar } from '../../context/SnackbarContext'
 
 interface DailyClosingModalProps {
@@ -69,12 +69,6 @@ export default function DailyClosingModal({
   }
 
   function handleConfirmLock() {
-    /*
-     * Save/lock logic can be connected to the backend here.
-     * The confirmation is intentionally kept before the
-     * actual save operation.
-     */
-
     setConfirmLockOpen(false)
 
     showSnackbar(
@@ -108,62 +102,63 @@ export default function DailyClosingModal({
   return (
     <>
       {/* Main Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)]">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        onClick={onClose}
+      >
+        <div
+          className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)]"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
-          <div className="flex shrink-0 items-start justify-between border-b border-slate-200 px-6 py-5">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-slate-900">
-                Daily Closing
-              </h2>
-
-              <p className="mt-1 text-xs text-slate-500">
-                Review today's cash and payment collections before
-                locking the daily closing.
-              </p>
+          <header className="flex shrink-0 items-center justify-between border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-6 py-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#6b1d2f] text-white shadow-sm">
+                <NotebookPen size={22} />
+              </span>
+              <div>
+                <h2 id="daily-closing-title" className="text-xl font-bold text-salon-text">
+                  Daily Closing
+                </h2>
+                <p className="text-sm text-salon-muted">
+                  Review payments, cash balances, and finalize the day's closing.
+                </p>
+              </div>
             </div>
-
             <button
               type="button"
               onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-salon-muted hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f]"
               aria-label="Close daily closing"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             >
-              <X className="h-5 w-5" />
+              <X size={22} />
             </button>
-          </div>
+          </header>
 
           {/* Content */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            <div className="space-y-5">
+          <div className="min-h-0 flex-1 overflow-auto px-6 py-5">
+            <div className="space-y-6">
               {/* Cash Summary */}
               <section>
                 <div className="mb-3">
-                  <h3 className="text-sm font-bold text-slate-900">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Cash Summary
                   </h3>
-
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    Review the opening balance, cash movements,
-                    and final cash count.
-                  </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
                   {/* Opening Cash */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3.5">
                     <label
                       htmlFor="opening-cash"
                       className="mb-1.5 block text-xs font-semibold text-slate-600"
                     >
                       Opening Cash
                     </label>
-
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                         ₹
                       </span>
-
                       <input
                         id="opening-cash"
                         type="number"
@@ -172,25 +167,23 @@ export default function DailyClosingModal({
                         onChange={(event) =>
                           setOpeningCash(event.target.value)
                         }
-                        className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-7 pr-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
                       />
                     </div>
                   </div>
 
                   {/* Cash In */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3.5">
                     <label
                       htmlFor="cash-in"
                       className="mb-1.5 block text-xs font-semibold text-slate-600"
                     >
                       Cash In
                     </label>
-
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                         ₹
                       </span>
-
                       <input
                         id="cash-in"
                         type="number"
@@ -199,25 +192,23 @@ export default function DailyClosingModal({
                         onChange={(event) =>
                           setCashIn(event.target.value)
                         }
-                        className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-7 pr-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
                       />
                     </div>
                   </div>
 
                   {/* Cash Out */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3.5">
                     <label
                       htmlFor="cash-out"
                       className="mb-1.5 block text-xs font-semibold text-slate-600"
                     >
                       Cash Out
                     </label>
-
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                         ₹
                       </span>
-
                       <input
                         id="cash-out"
                         type="number"
@@ -226,64 +217,57 @@ export default function DailyClosingModal({
                         onChange={(event) =>
                           setCashOut(event.target.value)
                         }
-                        className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-7 pr-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
                       />
                     </div>
                   </div>
 
                   {/* Expected Closing */}
-                  <div className="rounded-xl border border-[#6b1d2f]/15 bg-[#6b1d2f]/5 p-3">
-                    <p className="mb-1.5 text-xs font-semibold text-slate-600">
-                      Expected Closing Cash
+                  <div className="rounded-xl border border-[#6b1d2f]/30 bg-gradient-to-br from-white to-[#6b1d2f]/5 p-3.5 shadow-xs">
+                    <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[#6b1d2f]">
+                      Expected Closing
                     </p>
-
-                    <p className="text-lg font-bold text-[#6b1d2f]">
+                    <p className="mt-1 text-base font-extrabold text-[#6b1d2f] tabular-nums">
                       {formatCurrency(expectedClosingCash)}
                     </p>
                   </div>
 
                   {/* Actual Counted */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3.5">
                     <label
                       htmlFor="actual-counted-cash"
                       className="mb-1.5 block text-xs font-semibold text-slate-600"
                     >
                       Actual Counted Cash
                     </label>
-
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                         ₹
                       </span>
-
                       <input
                         id="actual-counted-cash"
                         type="number"
                         min="0"
                         value={actualCountedCash}
                         onChange={(event) =>
-                          setActualCountedCash(
-                            event.target.value,
-                          )
+                          setActualCountedCash(event.target.value)
                         }
-                        className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-7 pr-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
+                        className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
                       />
                     </div>
                   </div>
                 </div>
               </section>
 
-              {/* Discrepancy */}
+              {/* Discrepancy & Notes */}
               <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                       Cash Discrepancy
                     </h3>
-
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      Difference between expected and actual
-                      counted cash.
+                    <p className="text-xs text-slate-500">
+                      Difference between expected and actual counted cash.
                     </p>
                   </div>
 
@@ -300,22 +284,15 @@ export default function DailyClosingModal({
                 </div>
 
                 <div className="mt-3">
-                  <label
-                    htmlFor="discrepancy-notes"
-                    className="mb-1.5 block text-xs font-semibold text-slate-700"
-                  >
-                    Discrepancy Notes
-                  </label>
-
                   <textarea
                     id="discrepancy-notes"
-                    rows={3}
+                    rows={2}
                     value={discrepancyNotes}
                     onChange={(event) =>
                       setDiscrepancyNotes(event.target.value)
                     }
                     placeholder="Add notes if there is a difference in the cash count..."
-                    className="w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
+                    className="w-full resize-none rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#6b1d2f] focus:ring-2 focus:ring-[#6b1d2f]/10"
                   />
                 </div>
               </section>
@@ -323,14 +300,9 @@ export default function DailyClosingModal({
               {/* Payment Breakdown */}
               <section>
                 <div className="mb-3">
-                  <h3 className="text-sm font-bold text-slate-900">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Payment Breakdown
                   </h3>
-
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    Review collections across cash, card, and
-                    digital payments.
-                  </p>
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -340,23 +312,16 @@ export default function DailyClosingModal({
                       <p className="text-xs font-semibold text-slate-500">
                         Cash Payments
                       </p>
-
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-sm text-slate-400">
-                          ₹
-                        </span>
-
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="text-xs text-slate-400">₹</span>
                         <input
                           type="number"
                           min="0"
                           value={paymentBreakdown.cash}
                           onChange={(event) =>
-                            updatePayment(
-                              'cash',
-                              event.target.value,
-                            )
+                            updatePayment('cash', event.target.value)
                           }
-                          className="w-full border-b border-slate-300 bg-transparent py-1 text-lg font-bold text-slate-900 outline-none focus:border-[#6b1d2f]"
+                          className="w-full border-b border-slate-300 bg-transparent py-0.5 text-base font-bold text-slate-900 outline-none focus:border-[#6b1d2f]"
                         />
                       </div>
                     </div>
@@ -366,23 +331,16 @@ export default function DailyClosingModal({
                       <p className="text-xs font-semibold text-slate-500">
                         Card Payments
                       </p>
-
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-sm text-slate-400">
-                          ₹
-                        </span>
-
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="text-xs text-slate-400">₹</span>
                         <input
                           type="number"
                           min="0"
                           value={paymentBreakdown.card}
                           onChange={(event) =>
-                            updatePayment(
-                              'card',
-                              event.target.value,
-                            )
+                            updatePayment('card', event.target.value)
                           }
-                          className="w-full border-b border-slate-300 bg-transparent py-1 text-lg font-bold text-slate-900 outline-none focus:border-[#6b1d2f]"
+                          className="w-full border-b border-slate-300 bg-transparent py-0.5 text-base font-bold text-slate-900 outline-none focus:border-[#6b1d2f]"
                         />
                       </div>
                     </div>
@@ -392,23 +350,16 @@ export default function DailyClosingModal({
                       <p className="text-xs font-semibold text-slate-500">
                         Digital Payments
                       </p>
-
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-sm text-slate-400">
-                          ₹
-                        </span>
-
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="text-xs text-slate-400">₹</span>
                         <input
                           type="number"
                           min="0"
                           value={paymentBreakdown.digital}
                           onChange={(event) =>
-                            updatePayment(
-                              'digital',
-                              event.target.value,
-                            )
+                            updatePayment('digital', event.target.value)
                           }
-                          className="w-full border-b border-slate-300 bg-transparent py-1 text-lg font-bold text-slate-900 outline-none focus:border-[#6b1d2f]"
+                          className="w-full border-b border-slate-300 bg-transparent py-0.5 text-base font-bold text-slate-900 outline-none focus:border-[#6b1d2f]"
                         />
                       </div>
                     </div>
@@ -419,8 +370,7 @@ export default function DailyClosingModal({
                     <span className="text-xs font-semibold text-slate-600">
                       Total Payment Collections
                     </span>
-
-                    <span className="text-sm font-bold text-[#6b1d2f]">
+                    <span className="text-xs font-bold text-[#6b1d2f]">
                       {formatCurrency(totalPayments)}
                     </span>
                   </div>
@@ -429,10 +379,8 @@ export default function DailyClosingModal({
 
               {/* Lock Notice */}
               <div className="rounded-xl border border-[#6b1d2f]/15 bg-[#6b1d2f]/5 px-4 py-3">
-                <p className="text-xs leading-5 text-slate-600">
-                  Once the daily closing is confirmed, the
-                  day's closing record will be locked and should
-                  not be modified without authorization.
+                <p className="text-xs text-slate-600">
+                  Once the daily closing is confirmed, the day's closing record will be locked and should not be modified without authorization.
                 </p>
               </div>
             </div>
@@ -451,7 +399,7 @@ export default function DailyClosingModal({
             <button
               type="button"
               onClick={handleSaveRequest}
-              className="rounded-lg bg-[#6b1d2f] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#581725] focus:outline-none focus:ring-2 focus:ring-[#6b1d2f]/20"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#6b1d2f] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#581725] focus:outline-none focus:ring-2 focus:ring-[#6b1d2f]/20"
             >
               Save & Lock Closing
             </button>
@@ -461,25 +409,22 @@ export default function DailyClosingModal({
 
       {/* Lock Confirmation Modal */}
       {confirmLockOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-[#24171b] p-5 shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#6b1d2f]/20 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.15)]">
             <div className="mb-5">
-              <h3 className="text-base font-bold text-white">
+              <h3 className="text-lg font-bold text-salon-text">
                 Lock Daily Closing?
               </h3>
-
-              <p className="mt-1.5 text-sm leading-5 text-white/65">
-                Are you sure you want to save and lock today's
-                closing? Once locked, the closing record should
-                not be modified without authorization.
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                Are you sure you want to save and lock today's closing? Once locked, the record should not be modified without authorization.
               </p>
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={handleCancelLock}
-                className="rounded-lg border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -487,7 +432,7 @@ export default function DailyClosingModal({
               <button
                 type="button"
                 onClick={handleConfirmLock}
-                className="rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#581725]"
+                className="rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#581725] focus:outline-none focus:ring-2 focus:ring-[#6b1d2f]/20"
               >
                 Confirm
               </button>

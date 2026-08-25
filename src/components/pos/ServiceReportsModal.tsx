@@ -4,6 +4,7 @@ import {
   Printer,
   RotateCcw,
   Search,
+  Wrench,
   X,
 } from 'lucide-react'
 import { useSnackbar } from '../../context/SnackbarContext'
@@ -238,30 +239,39 @@ export default function ServiceReportsModal({
   return (
     <>
       {/* Main Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)]">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        onClick={onClose}
+      >
+        <div
+          className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)]"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
-          <div className="flex shrink-0 items-start justify-between border-b border-slate-200 px-6 py-5">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-slate-900">
-                Service Reports
-              </h2>
-
-              <p className="mt-1 text-xs text-slate-500">
-                Review service bookings, staff performance,
-                revenue, and average service duration.
-              </p>
+          <header className="flex shrink-0 items-center justify-between border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-6 py-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#6b1d2f] text-white shadow-sm">
+                <Wrench size={22} />
+              </span>
+              <div>
+                <h2 className="text-xl font-bold text-salon-text">
+                  Service Reports
+                </h2>
+                <p className="text-sm text-salon-muted">
+                  Review service performance, bookings, staff assignments, and revenue.
+                </p>
+              </div>
             </div>
 
             <button
               type="button"
               onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-salon-muted hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f]"
               aria-label="Close service reports"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             >
-              <X className="h-5 w-5" />
+              <X size={22} />
             </button>
-          </div>
+          </header>
 
           {/* Filters */}
           <div className="shrink-0 px-6 py-4">
@@ -548,24 +558,23 @@ export default function ServiceReportsModal({
 
       {/* Reset Confirmation Modal */}
       {confirmResetOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-[#24171b] p-5 shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#6b1d2f]/20 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.15)]">
             <div className="mb-5">
-              <h3 className="text-base font-bold text-white">
+              <h3 className="text-lg font-bold text-salon-text">
                 Reset Service Filters?
               </h3>
 
-              <p className="mt-1.5 text-sm leading-5 text-white/65">
-                This will clear the search, category, and staff
-                filters and restore the complete service report.
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                This will clear the search, category, and staff filters and restore the complete service report.
               </p>
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2.5">
               <button
                 type="button"
                 onClick={handleCancelReset}
-                className="rounded-lg border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -573,7 +582,7 @@ export default function ServiceReportsModal({
               <button
                 type="button"
                 onClick={handleConfirmReset}
-                className="rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#581725]"
+                className="rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#581725] focus:outline-none focus:ring-2 focus:ring-[#6b1d2f]/20"
               >
                 Confirm
               </button>
