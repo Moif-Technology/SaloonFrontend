@@ -41,6 +41,15 @@ import DailyClosingModal from '../components/pos/DailyClosingModal'
 import TaxSummaryModal from '../components/pos/TaxSummaryModal'
 import ServiceReportsModal from '../components/pos/ServiceReportsModal'
 import InventoryReportsModal from '../components/pos/InventoryReportsModal'
+import PrinterConfigModal from '../components/pos/PrinterConfigModal'
+import ReceiptTemplatesModal from '../components/pos/ReceiptTemplatesModal'
+import TaxSettingsModal from '../components/pos/TaxSettingsModal'
+import UserRolePermissionsModal from '../components/pos/UserRolePermissionsModal'
+import ApplicationSettingsModal from '../components/pos/ApplicationSettingsModal'
+import StoreInformationModal from '../components/pos/StoreInformationModal'
+import LockScreenModal from '../components/pos/LockScreenModal'
+import LogoutModal from '../components/pos/LogoutModal'
+
 import PrintOptionsModal, {
   type ReceiptType,
 } from '../components/pos/PrintOptionsModal'
@@ -131,6 +140,15 @@ export default function PosPage() {
   const [taxSummaryModalOpen, setTaxSummaryModalOpen] = useState(false)
   const [serviceReportsModalOpen, setServiceReportsModalOpen] = useState(false)
   const [inventoryReportsModalOpen, setInventoryReportsModalOpen] = useState(false)
+  const [printerConfigModalOpen, setPrinterConfigModalOpen] = useState(false)
+  const [receiptTemplatesModalOpen, setReceiptTemplatesModalOpen] = useState(false)
+  const [taxSettingsModalOpen, setTaxSettingsModalOpen] = useState(false)
+  const [userRolePermissionsModalOpen, setUserRolePermissionsModalOpen] = useState(false)
+  const [applicationSettingsModalOpen, setApplicationSettingsModalOpen] = useState(false)
+  const [storeInformationModalOpen, setStoreInformationModalOpen] = useState(false)
+  const [lockScreenModalOpen, setLockScreenModalOpen] = useState(false)
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false)
+
   const [qtyEdit, setQtyEdit] = useState<{
     id: string
     name: string
@@ -256,6 +274,38 @@ export default function PosPage() {
     }
     if (item.id === 'inventory-reports') {
       setInventoryReportsModalOpen(true)
+      return
+    }
+    if (item.id === 'printer') {
+      setPrinterConfigModalOpen(true)
+      return
+    }
+    if (item.id === 'receipt-templates') {
+      setReceiptTemplatesModalOpen(true)
+      return
+    }
+    if (item.id === 'tax-settings') {
+      setTaxSettingsModalOpen(true)
+      return
+    }
+    if (item.id === 'roles') {
+      setUserRolePermissionsModalOpen(true)
+      return
+    }
+    if (item.id === 'app-settings') {
+      setApplicationSettingsModalOpen(true)
+      return
+    }
+    if (item.id === 'store-info') {
+      setStoreInformationModalOpen(true)
+      return
+    }
+    if (item.id === 'lock-screen') {
+      setLockScreenModalOpen(true)
+      return
+    }
+    if (item.id === 'logout') {
+      setLogoutModalOpen(true)
       return
     }
     showSnackbar(`${item.label} coming soon`, 'info')
@@ -759,6 +809,42 @@ export default function PosPage() {
 <InventoryReportsModal
   open={inventoryReportsModalOpen}
   onClose={() => setInventoryReportsModalOpen(false)}
+/>
+<PrinterConfigModal
+  open={printerConfigModalOpen}
+  onClose={() => setPrinterConfigModalOpen(false)}
+/>
+<ReceiptTemplatesModal
+  open={receiptTemplatesModalOpen}
+  onClose={() => setReceiptTemplatesModalOpen(false)}
+/>
+<TaxSettingsModal
+  open={taxSettingsModalOpen}
+  onClose={() => setTaxSettingsModalOpen(false)}
+/>
+<UserRolePermissionsModal
+  open={userRolePermissionsModalOpen}
+  onClose={() => setUserRolePermissionsModalOpen(false)}
+/>
+<ApplicationSettingsModal
+  open={applicationSettingsModalOpen}
+  onClose={() => setApplicationSettingsModalOpen(false)}
+/>
+<StoreInformationModal
+  open={storeInformationModalOpen}
+  onClose={() => setStoreInformationModalOpen(false)}
+/>
+<LockScreenModal
+  open={lockScreenModalOpen}
+  onClose={() => setLockScreenModalOpen(false)}
+/>
+<LogoutModal
+  open={logoutModalOpen}
+  onClose={() => setLogoutModalOpen(false)}
+  onConfirmLogout={() => {
+    
+    setLogoutModalOpen(false)
+  }}
 />
       <DiscountModal
         open={discountModalOpen}
