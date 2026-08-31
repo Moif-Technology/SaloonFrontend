@@ -125,8 +125,10 @@ export default function PurchaseManagementModal({
 
   const [formErrors, setFormErrors] =
     useState<FormErrors>({})
-    const [deleteItemIndex, setDeleteItemIndex] =
+    
+  const [deleteItemIndex, setDeleteItemIndex] =
     useState<number | null>(null)
+
   const canAddItem = newItems.every(
     (item) =>
       item.name.trim() &&
@@ -172,6 +174,7 @@ export default function PurchaseManagementModal({
 
   function removeItemRow(index: number) {
     if (newItems.length === 1) {
+      showSnackbar('At least one item is required.', 'error')
       return
     }
   
@@ -368,7 +371,7 @@ export default function PurchaseManagementModal({
       <div className="relative flex h-full max-h-[min(800px,92dvh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
 
         {/* MAIN HEADER */}
-        <header className="flex shrink-0 flex-col gap-3 border-b border-salon-border px-5 py-4">
+        <header className="flex shrink-0 flex-col gap-3 border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-5 py-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">
@@ -393,14 +396,14 @@ export default function PurchaseManagementModal({
                 onClick={() =>
                   setIsCreatePoOpen(true)
                 }
-                className="h-9 rounded-xl bg-[#6b1d2f] px-4 text-sm font-semibold text-white transition hover:opacity-90"
+                className="h-10 rounded-xl bg-[#6b1d2f] px-4 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
               >
                 Create Purchase Order
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-salon-muted hover:bg-black/5"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-salon-muted transition hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f]"
                 aria-label="Close"
               >
                 <X size={22} />
@@ -467,13 +470,13 @@ export default function PurchaseManagementModal({
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
             <form
               onSubmit={handleCreatePurchaseOrder}
-              className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl"
+              className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#6b1d2f]/10 bg-white shadow-xl"
               onClick={(e) =>
                 e.stopPropagation()
               }
             >
               {/* CREATE PO HEADER */}
-              <div className="flex items-center justify-between border-b border-salon-border px-5 py-4">
+              <div className="flex shrink-0 items-center justify-between border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-5 py-4">
                 <div>
                   <h3 className="text-lg font-bold text-salon-text">
                     Create Purchase Order
@@ -485,7 +488,7 @@ export default function PurchaseManagementModal({
                 <button
                   type="button"
                   onClick={closeCreateModal}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-salon-muted hover:bg-black/5"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-salon-muted transition hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f]"
                   aria-label="Close create purchase order"
                 >
                   <X size={20} />
@@ -511,11 +514,12 @@ export default function PurchaseManagementModal({
                       }
                     }}
                     placeholder="Enter supplier name"
-                    className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-salon-text outline-none focus:border-salon-primary ${
+                    className={[
+                      'h-10 w-full rounded-xl border bg-white px-3 text-sm text-salon-text outline-none transition focus:ring-2 focus:ring-[#6b1d2f]/10',
                       formErrors.supplier
-                        ? 'border-red-400'
-                        : 'border-salon-border'
-                    }`}
+                        ? 'border-red-400 focus:border-red-500'
+                        : 'border-salon-border focus:border-[#6b1d2f]',
+                    ].join(' ')}
                   />
                   {formErrors.supplier && (
                     <p className="mt-1 text-xs font-medium text-red-600">
@@ -541,7 +545,7 @@ export default function PurchaseManagementModal({
                       type="button"
                       onClick={addItemRow}
                       disabled={!canAddItem}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-salon-border px-3 py-1.5 text-xs font-semibold text-salon-primary hover:bg-salon-surface disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-salon-border px-3 py-1.5 text-xs font-semibold text-[#6b1d2f] transition hover:bg-[#6b1d2f]/5 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Plus size={14} />
                       Add Item
@@ -564,12 +568,13 @@ export default function PurchaseManagementModal({
                             )
                           }
                           placeholder="Item name"
-                          className={`h-10 rounded-xl border px-3 text-sm outline-none focus:border-salon-primary ${
+                          className={[
+                            'h-10 rounded-xl border px-3 text-sm outline-none transition focus:ring-2 focus:ring-[#6b1d2f]/10',
                             formErrors.items &&
                             !item.name.trim()
-                              ? 'border-red-400'
-                              : 'border-salon-border'
-                          }`}
+                              ? 'border-red-400 focus:border-red-500'
+                              : 'border-salon-border focus:border-[#6b1d2f]',
+                          ].join(' ')}
                         />
                         <input
                           type="number"
@@ -583,13 +588,14 @@ export default function PurchaseManagementModal({
                             )
                           }
                           placeholder="Qty"
-                          className={`h-10 rounded-xl border px-3 text-sm outline-none focus:border-salon-primary ${
+                          className={[
+                            'h-10 rounded-xl border px-3 text-sm outline-none transition focus:ring-2 focus:ring-[#6b1d2f]/10',
                             formErrors.items &&
                             (!item.qty ||
                               Number(item.qty) <= 0)
-                              ? 'border-red-400'
-                              : 'border-salon-border'
-                          }`}
+                              ? 'border-red-400 focus:border-red-500'
+                              : 'border-salon-border focus:border-[#6b1d2f]',
+                          ].join(' ')}
                         />
                         <input
                           type="number"
@@ -603,20 +609,21 @@ export default function PurchaseManagementModal({
                             )
                           }
                           placeholder="Unit cost"
-                          className={`h-10 rounded-xl border px-3 text-sm outline-none focus:border-salon-primary ${
+                          className={[
+                            'h-10 rounded-xl border px-3 text-sm outline-none transition focus:ring-2 focus:ring-[#6b1d2f]/10',
                             formErrors.items &&
                             (!item.unitCost ||
                               Number(item.unitCost) < 0)
-                              ? 'border-red-400'
-                              : 'border-salon-border'
-                          }`}
+                              ? 'border-red-400 focus:border-red-500'
+                              : 'border-salon-border focus:border-[#6b1d2f]',
+                          ].join(' ')}
                         />
                         <button
                           type="button"
                           onClick={() =>
                             removeItemRow(index)
                           }
-                          className="flex h-10 w-9 items-center justify-center rounded-xl text-salon-muted hover:bg-red-50 hover:text-red-600"
+                          className="flex h-10 w-9 items-center justify-center rounded-xl text-salon-muted transition hover:bg-red-50 hover:text-red-600"
                           aria-label={`Remove item ${index + 1}`}
                         >
                           <Trash2 size={16} />
@@ -645,11 +652,12 @@ export default function PurchaseManagementModal({
                       }
                     }}
                     placeholder="Enter expected total cost"
-                    className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-salon-text outline-none focus:border-salon-primary ${
+                    className={[
+                      'h-10 w-full rounded-xl border bg-white px-3 text-sm text-salon-text outline-none transition focus:ring-2 focus:ring-[#6b1d2f]/10',
                       formErrors.expectedTotalCost
-                        ? 'border-red-400'
-                        : 'border-salon-border'
-                    }`}
+                        ? 'border-red-400 focus:border-red-500'
+                        : 'border-salon-border focus:border-[#6b1d2f]',
+                    ].join(' ')}
                   />
                   {formErrors.expectedTotalCost && (
                     <p className="mt-1 text-xs font-medium text-red-600">
@@ -660,17 +668,17 @@ export default function PurchaseManagementModal({
               </div>
 
               {/* CREATE PO FOOTER */}
-              <div className="flex shrink-0 justify-end gap-2 border-t border-salon-border px-5 py-4">
+              <div className="flex shrink-0 justify-end gap-2 border-t border-[#6b1d2f]/10 px-5 py-4">
                 <button
                   type="button"
                   onClick={closeCreateModal}
-                  className="h-10 rounded-xl border border-salon-border px-4 text-sm font-semibold text-salon-text hover:bg-salon-surface"
+                  className="h-10 rounded-xl border border-salon-border px-4 text-sm font-semibold text-salon-text transition hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="h-10 rounded-xl bg-[#6b1d2f] px-5 text-sm font-semibold text-white hover:opacity-90"
+                  className="h-10 rounded-xl bg-[#6b1d2f] px-5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
                 >
                   Create Purchase Order
                 </button>
@@ -678,48 +686,50 @@ export default function PurchaseManagementModal({
             </form>
           </div>
         )}
-{deleteItemIndex !== null && (
-  <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50 p-4">
-    <div
-      className="w-full max-w-sm rounded-2xl border border-salon-border bg-white p-5 shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="mb-4">
-        <h3 className="text-base font-bold text-salon-text">
-          Delete Item
-        </h3>
 
-        <p className="mt-1.5 text-sm text-salon-muted">
-          Are you sure you want to delete{' '}
-          <span className="font-semibold text-salon-text">
-            {newItems[deleteItemIndex]?.name.trim()
-              ? `"${newItems[deleteItemIndex].name.trim()}"`
-              : 'this item'}
-          </span>
-          ?
-        </p>
-      </div>
+        {deleteItemIndex !== null && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50 p-4">
+            <div
+              className="w-full max-w-sm rounded-2xl border border-salon-border bg-white p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-4">
+                <h3 className="text-base font-bold text-salon-text">
+                  Delete Item
+                </h3>
 
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => setDeleteItemIndex(null)}
-          className="h-9 rounded-xl border border-salon-border px-4 text-sm font-semibold text-salon-text transition hover:bg-salon-surface"
-        >
-          Cancel
-        </button>
+                <p className="mt-1.5 text-sm text-salon-muted">
+                  Are you sure you want to delete{' '}
+                  <span className="font-semibold text-salon-text">
+                    {newItems[deleteItemIndex]?.name.trim()
+                      ? `"${newItems[deleteItemIndex].name.trim()}"`
+                      : 'this item'}
+                  </span>
+                  ?
+                </p>
+              </div>
 
-        <button
-          type="button"
-          onClick={confirmDeleteItem}
-          className="h-9 rounded-xl bg-[#6b1d2f] px-4 text-sm font-semibold text-white transition hover:opacity-90"
-        >
-          Confirm
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteItemIndex(null)}
+                  className="h-9 rounded-xl border border-salon-border px-4 text-sm font-semibold text-salon-text transition hover:bg-salon-surface"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmDeleteItem}
+                  className="h-9 rounded-xl bg-[#6b1d2f] px-4 text-sm font-semibold text-white transition hover:opacity-90"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* INVOICE / PO DETAILS MODAL */}
         {selectedPo && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 p-6">

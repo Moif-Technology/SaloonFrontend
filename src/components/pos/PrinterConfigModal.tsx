@@ -190,9 +190,9 @@ export default function PrinterConfigModal({
 
   return (
     <>
-      {/* Local Toast Notification */}
-      {showToast && (
-        <div className="fixed right-6 top-6 z-[60] flex items-center gap-3 rounded-xl bg-[#6b1d2f] px-4 py-3 text-sm font-semibold text-white shadow-xl animate-fade-in">
+{/* Local Toast Notification */}
+{showToast && (
+        <div className="fixed right-6 bottom-6 z-[60] flex items-center gap-3 rounded-xl bg-[#6b1d2f] px-4 py-3 text-sm font-semibold text-white shadow-xl animate-fade-in">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs">
             ✓
           </span>

@@ -31,9 +31,9 @@ const stylesByVariant: Record<
     action: 'text-violet-500',
   },
   success: {
-    card: 'bg-emerald-50/70',
-    badge: 'bg-emerald-500',
-    action: 'text-emerald-600',
+    card: 'bg-[#6b1d2f]/10 border-[#6b1d2f]/20',
+    badge: 'bg-[#6b1d2f]',
+    action: 'text-[#6b1d2f]',
   },
   error: {
     card: 'bg-red-50/70',

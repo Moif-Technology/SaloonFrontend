@@ -96,34 +96,34 @@ export default function StockLevelsModal({
       }}
     >
       <div className="relative flex h-full max-h-[min(800px,92dvh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
-        <header className="flex shrink-0 flex-col gap-3 border-b border-salon-border px-5 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">
-                <Layers size={22} />
-              </span>
-              <div className="min-w-0">
-                <h2
-                  id="stock-levels-title"
-                  className="text-xl font-bold text-salon-text"
-                >
-                  Stock Levels
-                </h2>
-                <p className="mt-0.5 text-sm font-medium text-salon-muted">
-                  Monitor current stock quantities and low-stock alerts
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-salon-muted hover:bg-black/5"
-              aria-label="Close"
-            >
-              <X size={22} />
-            </button>
-          </div>
-        </header>
+      <header className="flex shrink-0 flex-col gap-3 border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-5 py-4">
+  <div className="flex items-center justify-between gap-3">
+    <div className="flex min-w-0 items-start gap-3">
+      <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">
+        <Layers size={22} />
+      </span>
+      <div className="min-w-0">
+        <h2
+          id="stock-levels-title"
+          className="text-xl font-bold text-salon-text"
+        >
+          Stock Levels
+        </h2>
+        <p className="mt-0.5 text-sm font-medium text-salon-muted">
+          Monitor current stock quantities and low-stock alerts
+        </p>
+      </div>
+    </div>
+    <button
+      type="button"
+      onClick={onClose}
+      className="flex h-11 w-11 items-center justify-center rounded-full text-salon-muted transition hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f]"
+      aria-label="Close"
+    >
+      <X size={22} />
+    </button>
+  </div>
+</header>
 
       
 

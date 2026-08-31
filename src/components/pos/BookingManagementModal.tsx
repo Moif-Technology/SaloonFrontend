@@ -1,6 +1,7 @@
 import { ClipboardList, X, Eye } from 'lucide-react'
 import { useState } from 'react'
 import Button from '../common/Button'
+import DatePicker from '../common/DatePicker'
 
 export interface BookingManagementModalProps {
   open: boolean
@@ -75,8 +76,8 @@ const rows = MOCK_BOOKINGS.filter((b) => {
       }}
     >
       <div className="relative flex h-full max-h-[min(800px,92dvh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
-     <header className="flex shrink-0 items-center justify-between gap-3 border-b border-salon-border px-5 py-4">
-  <div className="flex min-w-0 items-start gap-3">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-5 py-4">
+              <div className="flex min-w-0 items-start gap-3">
     <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">
       <ClipboardList size={22} />
     </span>
@@ -113,11 +114,11 @@ const rows = MOCK_BOOKINGS.filter((b) => {
     onChange={(e) => setSearch(e.target.value)}
     className="h-9 flex-1 min-w-[180px] rounded-lg border border-salon-border bg-white px-3 text-sm text-salon-text placeholder:text-salon-muted focus:outline-none focus:ring-2 focus:ring-salon-primary/30"
   />
-  <input
-    type="date"
+  <DatePicker
     value={dateFilter}
-    onChange={(e) => setDateFilter(e.target.value)}
-    className="h-9 rounded-lg border border-salon-border bg-white px-3 text-sm text-salon-text focus:outline-none focus:ring-2 focus:ring-salon-primary/30"
+    onChange={setDateFilter}
+    placeholder="Filter by date"
+    className="h-9 shrink-0"
   />
   {(search || dateFilter) && (
     <button

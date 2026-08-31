@@ -80,8 +80,8 @@ export default function AppointmentListModal({
     >
       <div className="flex h-full max-h-[min(800px,92dvh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
         {/* Header */}
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-salon-border px-5 py-4">
-          <div className="min-w-0">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-5 py-4">
+                  <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2
                 id="appointment-list-title"

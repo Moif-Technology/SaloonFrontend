@@ -110,48 +110,48 @@ const staffToShow =
       }}
     >
       <div className="relative flex h-full max-h-[min(800px,92dvh)] w-full max-w-[920px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
-        <header className="flex shrink-0 flex-col gap-3 border-b border-salon-border px-5 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">
-                <Scissors size={22} />
-              </span>
-              <div className="min-w-0">
-                <h2
-                  id="service-assignments-title"
-                  className="text-xl font-bold text-salon-text"
-                >
-                  Service Assignments
-                </h2>
-                <p className="mt-0.5 text-sm font-medium text-salon-muted">
-                  Assign services to staff members
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-salon-muted hover:bg-black/5"
-              aria-label="Close"
-            >
-              <X size={22} />
-            </button>
-          </div>
+      <header className="flex shrink-0 flex-col gap-3 border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-5 py-4">
+  <div className="flex items-center justify-between gap-3">
+    <div className="flex min-w-0 items-start gap-3">
+      <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-salon-primary-light text-salon-primary">
+        <Scissors size={22} />
+      </span>
+      <div className="min-w-0">
+        <h2
+          id="service-assignments-title"
+          className="text-xl font-bold text-salon-text"
+        >
+          Service Assignments
+        </h2>
+        <p className="mt-0.5 text-sm font-medium text-salon-muted">
+          Assign services to staff members
+        </p>
+      </div>
+    </div>
+    <button
+      type="button"
+      onClick={onClose}
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-salon-muted hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f] transition"
+      aria-label="Close"
+    >
+      <X size={22} />
+    </button>
+  </div>
 
-          <div className="relative">
-            <Search
-              size={18}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-salon-muted"
-            />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search service or employee…"
-              className="h-10 w-full rounded-xl border-2 border-salon-border bg-white py-2 pl-10 pr-3 text-sm font-medium text-salon-text outline-none focus:border-salon-primary"
-            />
-          </div>
-        </header>
+  <div className="relative">
+    <Search
+      size={18}
+      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-salon-muted"
+    />
+    <input
+      type="search"
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      placeholder="Search service or employee…"
+      className="h-10 w-full rounded-xl border border-salon-border bg-white py-2 pl-10 pr-3 text-sm font-medium text-salon-text outline-none transition focus:border-salon-primary focus:ring-2 focus:ring-[#6b1d2f]/10"
+    />
+  </div>
+</header>
 
         <div className="min-h-0 flex-1 overflow-auto overscroll-contain bg-slate-50/80 px-4 pb-3 md:px-5 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
   {servicesToShow.length === 0 || staffToShow.length === 0 ? (

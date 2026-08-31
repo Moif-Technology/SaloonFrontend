@@ -120,8 +120,9 @@ export default function TaxSettingsModal({
 
     setTaxRates((prev) => prev.filter((tax) => tax.id !== id))
 
+    // Toast notification for delete action
     showSnackbar(
-      target ? `${target.name} tax rate removed` : 'Tax rate removed',
+      target ? `${target.name} tax rate removed successfully` : 'Tax rate removed',
       'info',
     )
   }
@@ -144,6 +145,8 @@ export default function TaxSettingsModal({
       showSnackbar('Tax rate must be between 0% and 100%', 'error')
       return
     }
+
+    const isExisting = taxRates.some((tax) => tax.id === editingTax.id)
 
     setTaxRates((prev) => {
       const exists = prev.some((tax) => tax.id === editingTax.id)
@@ -171,8 +174,9 @@ export default function TaxSettingsModal({
     setEditingTax(null)
     setShowAddForm(false)
 
+    // Toast notification for Edit vs Add
     showSnackbar(
-      'Tax rate added successfully',
+      isExisting ? 'Tax rate updated successfully' : 'Tax rate added successfully',
       'success',
     )
   }
@@ -183,6 +187,7 @@ export default function TaxSettingsModal({
   }
 
   function handleSaveChanges() {
+    // Toast notification for global changes save
     showSnackbar(
       'Tax settings saved successfully',
       'success',
@@ -661,27 +666,29 @@ export default function TaxSettingsModal({
 
           {/* Footer */}
           <div className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-white px-6 py-4">
-  <p className="text-xs text-slate-500">2 tax rules configured · 2 active</p>
+            <p className="text-xs text-slate-500">
+              {taxRates.length} tax rules configured · {activeTaxCount} active
+            </p>
 
-  <div className="flex items-center gap-2.5">
-    <button
-      type="button"
-      onClick={onClose}
-      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-    >
-      Cancel
-    </button>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
 
-    <button
-  type="button"
-  onClick={handleSaveChanges}
-  className="inline-flex items-center gap-2 rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#581725]"
->
-  <Save size={16} />
-  Save Changes
-</button>
-  </div>
-</div>
+              <button
+                type="button"
+                onClick={handleSaveChanges}
+                className="inline-flex items-center gap-2 rounded-lg bg-[#6b1d2f] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#581725]"
+              >
+                <Save size={16} />
+                Save Changes
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </>

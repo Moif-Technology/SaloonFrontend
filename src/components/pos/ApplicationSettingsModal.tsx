@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSnackbar } from '../../context/SnackbarContext'
 import {
   Bell,
   Clock3,
@@ -13,6 +14,7 @@ import {
 interface ApplicationSettingsModalProps {
   open: boolean
   onClose: () => void
+  showToast?: (message: string, variant?: 'success' | 'error' | 'info' | 'warning' | 'loading') => void
 }
 
 type ThemeMode = 'light' | 'dark' | 'system'
@@ -20,7 +22,9 @@ type ThemeMode = 'light' | 'dark' | 'system'
 export default function ApplicationSettingsModal({
   open,
   onClose,
+  showToast,
 }: ApplicationSettingsModalProps) {
+  const { showSnackbar } = useSnackbar()
   const [themeMode, setThemeMode] = useState<ThemeMode>('light')
   const [timeZone, setTimeZone] = useState('Asia/Kolkata')
   const [dateFormat, setDateFormat] = useState('DD-MM-YYYY')
@@ -32,6 +36,9 @@ export default function ApplicationSettingsModal({
 
   function handleSave() {
     // Connect this to your application settings/API later.
+    if (showToast) {
+      showToast('Application preferences saved successfully', 'success')
+    }
     onClose()
   }
 

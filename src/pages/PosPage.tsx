@@ -829,6 +829,7 @@ export default function PosPage() {
 <ApplicationSettingsModal
   open={applicationSettingsModalOpen}
   onClose={() => setApplicationSettingsModalOpen(false)}
+  showToast={showSnackbar}
 />
 <StoreInformationModal
   open={storeInformationModalOpen}

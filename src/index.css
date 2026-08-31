@@ -50,6 +50,14 @@ button {
   font-family: inherit;
 }
 
+input[type='date'],
+input[type='datetime-local'],
+input[type='month'],
+input[type='week'],
+input[type='time'] {
+  accent-color: var(--color-salon-primary);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

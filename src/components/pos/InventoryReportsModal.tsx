@@ -323,7 +323,7 @@ export default function InventoryReportsModal({
         onClick={onClose}
       >
         <div
-          className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)]"
+          className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(0,0,0,0.15)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -433,7 +433,6 @@ export default function InventoryReportsModal({
 
               {/* Filter Actions */}
               <div className="flex items-center gap-3">
-                {/* Badges placed horizontally side by side */}
                 <div className="flex items-center gap-2">
                   {lowStockCount > 0 && (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 border border-amber-200">
@@ -491,31 +490,31 @@ export default function InventoryReportsModal({
             </div>
           </div>
 
-          {/* Table */}
-          <div className="min-h-0 flex-1 overflow-auto px-6 pb-4">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <table className="min-w-full text-left text-sm">
-                <thead className="sticky top-0 z-10 bg-[#f9f9f9]">
+          {/* Table Container with explicit scrolling wrapper height */}
+          <div className="px-6 pb-4">
+            <div className="max-h-[340px] overflow-y-auto rounded-xl border border-slate-200 bg-white">
+              <table className="min-w-full border-collapse text-left text-sm">
+                <thead className="sticky top-0 z-20 bg-slate-100 shadow-sm">
                   <tr className="border-b border-slate-200">
-                    <th className="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-600">
+                    <th className="whitespace-nowrap bg-slate-100 px-4 py-3 text-xs font-bold text-slate-600">
                       Item Name
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-xs font-bold text-slate-600">
+                    <th className="whitespace-nowrap bg-slate-100 px-4 py-3 text-xs font-bold text-slate-600">
                       Category
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-center text-xs font-bold text-slate-600">
+                    <th className="whitespace-nowrap bg-slate-100 px-4 py-3 text-center text-xs font-bold text-slate-600">
                       Stock In
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-center text-xs font-bold text-slate-600">
+                    <th className="whitespace-nowrap bg-slate-100 px-4 py-3 text-center text-xs font-bold text-slate-600">
                       Stock Out
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-center text-xs font-bold text-slate-600">
+                    <th className="whitespace-nowrap bg-slate-100 px-4 py-3 text-center text-xs font-bold text-slate-600">
                       Current Stock
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-bold text-slate-600">
+                    <th className="whitespace-nowrap bg-slate-100 px-4 py-3 text-right text-xs font-bold text-slate-600">
                       Unit Cost
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-bold text-slate-600">
+                    <th className="whitespace-nowrap bg-slate-100 px-4 py-3 text-right text-xs font-bold text-slate-600">
                       Total Value
                     </th>
                   </tr>
