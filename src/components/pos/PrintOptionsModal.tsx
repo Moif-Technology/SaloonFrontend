@@ -101,27 +101,27 @@ export default function PrintOptionsModal({
     >
       <div className="flex w-full max-h-[min(720px,92dvh)] max-w-[640px] flex-col overflow-hidden rounded-2xl border border-salon-border bg-white shadow-xl">
         {/* ── Header ── */}
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-salon-border px-4 py-3.5 sm:px-5 sm:py-4">
-          <div className="min-w-0">
-            <h2
-              id="print-options-title"
-              className="text-xl font-bold text-salon-text"
-            >
-              Print Options & Receipts
-            </h2>
-            <p className="mt-0.5 text-sm font-medium text-salon-muted">
-              Choose receipt type, then print or send digital
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-salon-muted hover:bg-black/5"
-            aria-label="Close"
-          >
-            <X size={22} />
-          </button>
-        </header>
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-4 py-3.5 sm:px-5 sm:py-4">
+  <div className="min-w-0">
+    <h2
+      id="print-options-title"
+      className="text-xl font-bold text-salon-text"
+    >
+      Print Options & Receipts
+    </h2>
+    <p className="mt-0.5 text-sm font-medium text-salon-muted">
+      Choose receipt type, then print or send digital
+    </p>
+  </div>
+  <button
+    type="button"
+    onClick={onClose}
+    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-salon-muted transition hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f]"
+    aria-label="Close"
+  >
+    <X size={22} />
+  </button>
+</header>
 
         {/* ── Body ── */}
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">

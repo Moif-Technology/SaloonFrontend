@@ -231,24 +231,24 @@ export default function CustomerEntryModal({
 ].join(' ')}
  >
         {/* Header */}
-        <header className="flex shrink-0 items-center justify-between border-b border-salon-border px-5 py-4">
-          <div>
-            <h2 id="customer-entry-title" className="text-xl font-bold text-salon-text">
-              Customer Entry
-            </h2>
-            <p className="mt-0.5 text-sm font-medium text-salon-muted">
-              Step {step} of 4 · {STEP_LABELS[step - 1]}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-salon-muted hover:bg-black/5"
-            aria-label="Close"
-          >
-            <X size={22} />
-          </button>
-        </header>
+        <header className="flex shrink-0 items-center justify-between border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-5 py-4">
+  <div>
+    <h2 id="customer-entry-title" className="text-xl font-bold text-salon-text">
+      Customer Entry
+    </h2>
+    <p className="mt-0.5 text-sm font-medium text-salon-muted">
+      Step {step} of 4 · {STEP_LABELS[step - 1]}
+    </p>
+  </div>
+  <button
+    type="button"
+    onClick={onClose}
+    className="flex h-11 w-11 items-center justify-center rounded-full text-salon-muted transition hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f]"
+    aria-label="Close"
+  >
+    <X size={22} />
+  </button>
+</header>
 
         {/* Step pills */}
         <div className="flex shrink-0 gap-2 px-5 pt-4">

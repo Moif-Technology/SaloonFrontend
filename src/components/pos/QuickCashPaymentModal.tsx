@@ -148,31 +148,31 @@ export default function QuickCashPaymentModal({
         ].join(' ')}
       >
         {/* Header */}
-        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-salon-border px-3 py-3 xs:px-4 sm:gap-3 sm:px-5 sm:py-4">
-          <div className="min-w-0 flex-1">
-            <h2
-              id="quick-cash-title"
-              className="truncate text-lg font-bold text-salon-text xs:text-xl"
-            >
-              Quick Cash Payment
-            </h2>
-            <p className="mt-0.5 truncate text-xs font-medium text-salon-muted sm:text-sm">
-              Grand Total:{' '}
-              <span className="font-bold tabular-nums text-salon-primary">
-                ₹{formatCurrency(amount)}
-              </span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={submitting}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-salon-muted hover:bg-black/5 disabled:opacity-40 sm:h-11 sm:w-11"
-            aria-label="Close"
-          >
-            <X size={22} />
-          </button>
-        </header>
+        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-[#6b1d2f]/10 bg-gradient-to-r from-[#6b1d2f]/8 to-transparent px-3 py-3 xs:px-4 sm:gap-3 sm:px-5 sm:py-4">
+  <div className="min-w-0 flex-1">
+    <h2
+      id="quick-cash-title"
+      className="truncate text-lg font-bold text-salon-text xs:text-xl"
+    >
+      Quick Cash Payment
+    </h2>
+    <p className="mt-0.5 truncate text-xs font-medium text-salon-muted sm:text-sm">
+      Grand Total:{' '}
+      <span className="font-bold tabular-nums text-salon-primary">
+        ₹{formatCurrency(amount)}
+      </span>
+    </p>
+  </div>
+  <button
+    type="button"
+    onClick={handleClose}
+    disabled={submitting}
+    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-salon-muted transition hover:bg-[#6b1d2f]/10 hover:text-[#6b1d2f] disabled:opacity-40 sm:h-11 sm:w-11"
+    aria-label="Close"
+  >
+    <X size={22} />
+  </button>
+</header>
 
         {/* Body: left form + right keypad */}
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
